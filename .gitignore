@@ -1,0 +1,15 @@
+# Visual Studio
+.vs/
+*.user
+
+# Build output
+x64/
+Debug/
+Release/
+
+# vcpkg generated packages
+vcpkg_installed/
+
+# VS database/cache
+*.db
+*.opendb
