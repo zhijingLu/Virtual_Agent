@@ -9,8 +9,9 @@
 #include "character/Shader.h"
 #include "character/Model.h"
 #include "character/Camera.h"
-#include "character/Animation.h"
-#include "character/Animator.h"
+#include "animation/Animation.h"
+#include "animation/Animator.h"
+#include "animation/AnimationController.h"
 //vcpkg install --triplet x64-windows-static
 int main()
 {
@@ -100,26 +101,25 @@ int main()
     // -------------------------------------------------
     // 6. Load character model
     // -------------------------------------------------
+    
+    float animationSpeed = 2.0f;
 
     // Assimp will load the model file.
     //
     // Make sure the file actually exists at this path.
     Model character(
-        "assets/CesiumMan.glb"
+        "assets/Lu.glb"
     );
 
     // Load the first animation from the same model file.
-    Animation animation(
-        "assets/CesiumMan.glb",
-        &character,
-        0
+    AnimationController animationController(
+        "assets/Lu.glb",
+        &character
     );
+   
+    
 
 
-    // Create the animation player.
-    Animator animator(
-        &animation
-    );
     // -------------------------------------------------
     // 7. Create camera
     // -------------------------------------------------
@@ -172,7 +172,22 @@ int main()
         // ---------------------------------------------
         // Process keyboard input
         // ---------------------------------------------
+        // Toggle animation with SPACE key.
+        //if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        //{
+        //    // Only trigger once when the key is pressed down.
+        //    if (!spacePressed)
+        //    {
+        //        animationPlaying = !animationPlaying;
 
+        //        spacePressed = true;
+        //    }
+        //}
+        //else
+        //{
+        //    // Key has been released.
+        //    spacePressed = false;
+        //}
         // Move camera forward.
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         {
@@ -211,14 +226,70 @@ int main()
         // -----------------------------------------
        // Update animation
        // -----------------------------------------
-
-        animator.updateAnimation(
+        animationController.update(
             deltaTime
         );
-        animator.updateAnimation(
-            deltaTime
-        );
+        //animator.updateAnimation(
+        //    deltaTime
+        //);
+        /* if (animationPlaying)
+        {
+            animator.updateAnimation(
+                deltaTime* animationSpeed
+            );
+        }*/
+        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::Idle
+            );
+        }
 
+        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::Walk
+            );
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::Run
+            );
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::Talk
+            );
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::StandToSit
+            );
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+        {
+            animationController.playState(
+                AnimationState::Sitting
+            );
+        }
+        if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+        {
+            animationController.playSequence(
+                {
+                    { AnimationState::Idle, 1 },
+                    { AnimationState::Walk, 4 },
+                    { AnimationState::Idle, 1 },
+                    { AnimationState::Run, 3 }
+                }
+            );
+        }
         // ---------------------------------------------
         // Clear previous frame
         // ---------------------------------------------
@@ -284,20 +355,16 @@ int main()
             model,
             glm::vec3(
                 0.0f,
-                -1.0f,
+                -10.0f,
                 0.0f
             )
         );
         model = glm::rotate(
             model,
-            glm::radians(-90.0f),
+            glm::radians(90.0f),
             glm::vec3(1.0f, 0.0f, 0.0f)
         );
-        model = glm::rotate(
-            model,
-            glm::radians(-90.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f)
-        );
+        
 
         // Optional:
         // Scale the character.
@@ -306,9 +373,9 @@ int main()
         model = glm::scale(
             model,
             glm::vec3(
-                1.0f,
-                1.0f,
-                1.0f
+                0.2f,
+                0.2f,
+                0.2f
             )
         );
 
@@ -363,7 +430,7 @@ int main()
 
         const std::vector<glm::mat4>&
             boneMatrices =
-            animator
+            animationController
             .getFinalBoneMatrices();
 
 

@@ -88,7 +88,7 @@ void main()
         specularStrength *
         spec *
         lightColor;
-
+    
     // -----------------------------
     // Final color
     // -----------------------------

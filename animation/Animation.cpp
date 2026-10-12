@@ -303,6 +303,7 @@ void Animation::readAnimation(
     //
     // Later:
     // finalBoneMatrix =globalInverse *globalBoneTransform *boneOffset
+	// it removes the original root-node transform from the final bone transformation.相对整个模型的根节点的变换，去掉根节点的影响
     globalInverseTransform =
         glm::inverse(
             convertMatrix(

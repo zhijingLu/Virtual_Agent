@@ -74,6 +74,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IntDir>$(SolutionDir)intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IntDir>$(SolutionDir)intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -151,8 +157,9 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="character\Animation.cpp" />
-    <ClCompile Include="character\Animator.cpp" />
+    <ClCompile Include="animation\Animation.cpp" />
+    <ClCompile Include="animation\animationController.cpp" />
+    <ClCompile Include="animation\Animator.cpp" />
     <ClCompile Include="character\Camera.cpp" />
     <ClCompile Include="character\Mesh.cpp" />
     <ClCompile Include="character\Model.cpp" />
@@ -162,13 +169,15 @@
   <ItemGroup>
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
+    <None Include="README.md" />
     <None Include="vcpkg-configuration.json" />
     <None Include="vcpkg.json" />
     <None Include="vitual agent.slnx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="character\Animation.h" />
-    <ClInclude Include="character\Animator.h" />
+    <ClInclude Include="animation\Animation.h" />
+    <ClInclude Include="animation\animationController.h" />
+    <ClInclude Include="animation\Animator.h" />
     <ClInclude Include="character\Camera.h" />
     <ClInclude Include="character\Mesh.h" />
     <ClInclude Include="character\Model.h" />

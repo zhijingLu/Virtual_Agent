@@ -9,7 +9,7 @@
 
 #include <assimp/scene.h>
 
-#include "Model.h"
+#include "../character/Model.h"
 
 //read keyframe animation
 // -----------------------------------------------------

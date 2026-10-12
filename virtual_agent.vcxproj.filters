@@ -30,10 +30,13 @@
     <ClCompile Include="character\Camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="character\Animation.cpp">
+    <ClCompile Include="animation\animationController.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="character\Animator.cpp">
+    <ClCompile Include="animation\Animation.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="animation\Animator.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -50,10 +53,13 @@
     <ClInclude Include="character\Camera.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="character\Animation.h">
+    <ClInclude Include="animation\animationController.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="character\Animator.h">
+    <ClInclude Include="animation\Animation.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="animation\Animator.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -63,5 +69,6 @@
     <None Include="vcpkg-configuration.json" />
     <None Include="vcpkg.json" />
     <None Include="vitual agent.slnx" />
+    <None Include="README.md" />
   </ItemGroup>
 </Project>

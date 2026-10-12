@@ -3,7 +3,7 @@
 Camera::Camera()
 {
     // Initial camera position.
-    position = glm::vec3(0.0f, 0.0f, 3.0f);
+    position = glm::vec3(0.0f, 0.0f, 40.0f);
 
     // Camera looks toward negative Z.
     front = glm::vec3(0.0f, 0.0f, -1.0f);
