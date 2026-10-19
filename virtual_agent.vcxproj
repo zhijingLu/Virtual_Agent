@@ -121,7 +121,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -143,7 +143,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -160,15 +160,20 @@
     <ClCompile Include="animation\Animation.cpp" />
     <ClCompile Include="animation\animationController.cpp" />
     <ClCompile Include="animation\Animator.cpp" />
+    <ClCompile Include="audio\AudioPlayer.cpp" />
+    <ClCompile Include="audio\TTSEngine.cpp" />
     <ClCompile Include="character\Camera.cpp" />
     <ClCompile Include="character\Mesh.cpp" />
     <ClCompile Include="character\Model.cpp" />
     <ClCompile Include="character\Shader.cpp" />
+    <ClCompile Include="external\miniaudio\miniaudio.c" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
+    <None Include="python\openvoice_server\server.py" />
+    <None Include="python\openvoice_server\test_voice.py" />
     <None Include="README.md" />
     <None Include="vcpkg-configuration.json" />
     <None Include="vcpkg.json" />
@@ -178,10 +183,14 @@
     <ClInclude Include="animation\Animation.h" />
     <ClInclude Include="animation\animationController.h" />
     <ClInclude Include="animation\Animator.h" />
+    <ClInclude Include="audio\AudioBuffer.h" />
+    <ClInclude Include="audio\AudioPlayer.h" />
+    <ClInclude Include="audio\TTSEngine.h" />
     <ClInclude Include="character\Camera.h" />
     <ClInclude Include="character\Mesh.h" />
     <ClInclude Include="character\Model.h" />
     <ClInclude Include="character\Shader.h" />
+    <ClInclude Include="external\miniaudio\miniaudio.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

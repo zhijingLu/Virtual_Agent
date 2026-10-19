@@ -24,9 +24,6 @@
     <ClCompile Include="character\Model.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="character\Camera.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -37,6 +34,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="animation\Animator.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="external\miniaudio\miniaudio.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\AudioPlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\TTSEngine.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,6 +71,18 @@
     <ClInclude Include="animation\Animator.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="audio\AudioPlayer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="external\miniaudio\miniaudio.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\AudioBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\TTSEngine.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
@@ -70,5 +91,7 @@
     <None Include="vcpkg.json" />
     <None Include="vitual agent.slnx" />
     <None Include="README.md" />
+    <None Include="python\openvoice_server\test_voice.py" />
+    <None Include="python\openvoice_server\server.py" />
   </ItemGroup>
 </Project>

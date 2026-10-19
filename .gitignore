@@ -13,3 +13,5 @@ vcpkg_installed/
 # VS database/cache
 *.db
 *.opendb
+
+intermediate/

@@ -12,6 +12,9 @@
 #include "animation/Animation.h"
 #include "animation/Animator.h"
 #include "animation/AnimationController.h"
+//speech related files
+#include "audio/TTSEngine.h"
+#include "audio/AudioPlayer.h"
 //vcpkg install --triplet x64-windows-static
 int main()
 {
@@ -148,7 +151,12 @@ int main()
         1.0f
     );
 
-
+    // -------------------------------------------------
+    // Speech system
+    // -------------------------------------------------
+    TTSEngine tts;
+    AudioPlayer player;
+    bool speechKeyPressed = false;
     // -------------------------------------------------
     // 10. Main render loop
     // -------------------------------------------------
@@ -289,6 +297,53 @@ int main()
                     { AnimationState::Run, 3 }
                 }
             );
+        }
+        // -------------------------------------------------
+        // Press T to make the character speak.
+        // -------------------------------------------------
+
+        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+        {
+            // Trigger only once per key press.
+            if (!speechKeyPressed)
+            {
+                speechKeyPressed = true;
+
+                std::string text =
+                    "Hello, I am your virtual character，zhijing Lu. I am here to help you. What can I do for you?";
+
+             
+                AudioBuffer audio =
+                    tts.synthesize(text);
+
+                if (!audio.samples.empty())
+                {
+                    std::cout
+                        << "Audio generated: "
+                        << audio.samples.size()
+                        << " samples"
+                        << std::endl;
+
+                    player.play(audio);
+
+                    // Optional:
+                    // switch character to talking animation.
+                    animationController.playState(
+                        AnimationState::Talk
+                    );
+                }
+                else
+                {
+                    std::cerr
+                        << "Failed to generate speech."
+                        << std::endl;
+                }
+            }
+        }
+        else
+        {
+            // Key released, allow another trigger.
+            speechKeyPressed = false;
         }
         // ---------------------------------------------
         // Clear previous frame
