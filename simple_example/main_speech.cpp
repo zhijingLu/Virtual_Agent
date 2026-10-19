@@ -1,5 +1,5 @@
-#include "audio/TTSEngine.h"
-#include "audio/AudioPlayer.h"
+#include "../audio/TTSEngine.h"
+#include "../audio/AudioPlayer.h"
 
 #include <iostream>
 #include <string>

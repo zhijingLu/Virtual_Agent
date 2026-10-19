@@ -91,7 +91,7 @@
     <None Include="vcpkg.json" />
     <None Include="vitual agent.slnx" />
     <None Include="README.md" />
-    <None Include="python\openvoice_server\test_voice.py" />
     <None Include="python\openvoice_server\server.py" />
+    <None Include="python\openvoice_server\test_qwen.py" />
   </ItemGroup>
 </Project>

@@ -1447,7 +1447,601 @@ Draw Character
 
 ---
 
-# 11. Current Progress
+
+# 11. Speech System — Qwen3-TTS Voice Cloning
+
+The C++ character uses a local Python speech service powered by
+`Qwen/Qwen3-TTS-12Hz-0.6B-Base`. This Base model supports reference-audio
+voice cloning; the CustomVoice model is for preset speakers and is not used here.
+
+There are two separate stages:
+
+1. **Voice preparation (once per voice):** `test_qwen.py` extracts a voice prompt
+   from `reference.wav` and its exact transcript, saves `character_voice.pt`,
+   and generates `output_clone.wav` for listening.
+2. **Runtime:** `server.py` loads the model and saved voice prompt once at startup.
+   Each C++ request supplies new English text. The server returns signed 16-bit
+   mono PCM in memory for miniaudio playback.
+
+`character_voice.pt` contains voice-conditioning data, not the complete TTS model
+or a playable recording. New sentences still require model inference. Normal
+runtime does not need to read the original reference WAV or write temporary WAV files.
+
+## 11.1 Python Environment and Packages
+
+The following is a recommended clean setup. Use the same environment for voice
+preparation and the server. If an existing environment already runs the tested
+model successfully, it can be reused; its name does not affect the model.
+
+```bat
+conda create -n qwen3-tts python=3.10 -y
+conda activate qwen3-tts
+python -m pip install --upgrade pip setuptools wheel
+```
+
+Install a CUDA-enabled PyTorch build suitable for the NVIDIA RTX 5060 and its
+installed driver. Use the [official PyTorch installer](https://pytorch.org/get-started/locally/)
+to select Windows, Pip, Python and a supported CUDA build. Install `torch` and
+`torchaudio` together from the same CUDA wheel index with matching versions.
+Do not infer the PyTorch package version from the CUDA version.
+
+Then install the speech and HTTP packages:
+
+```bat
+python -m pip install -U qwen-tts flask soundfile numpy soxr
+python -m pip check
+```
+
+| Package | Purpose |
+| --- | --- |
+| `torch` | GPU tensor operations and model inference |
+| `torchaudio` | Audio operations used by the speech stack; match the PyTorch release |
+| `qwen-tts` | Qwen3-TTS model loading, voice prompt extraction and speech generation |
+| `flask` | Local HTTP endpoint called by C++ |
+| `soundfile` | Write the preview WAV |
+| `numpy` | Convert generated floating-point samples into PCM |
+| `soxr` | Audio resampling dependency; prevents the missing-soxr import error |
+
+The Qwen package installs its declared dependencies, including Transformers.
+This setup uses PyTorch SDPA attention and does not require a separate
+FlashAttention installation. The model weights are downloaded automatically on
+first load; later runs normally reuse the local cache. The first download needs
+network access.
+
+Verify the active interpreter and imports:
+
+```bat
+where python
+python -c "import soxr; from qwen_tts import Qwen3TTSModel, VoiceClonePromptItem; print('Import OK')"
+python -c "import torch; print('Torch:', torch.__version__); print('CUDA:', torch.version.cuda); print('Available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'Unavailable')"
+```
+
+Confirm an actual GPU operation also works:
+
+```bat
+python -c "import torch; x=torch.randn(256,256,device='cuda'); y=x@x; torch.cuda.synchronize(); print('CUDA computation OK')"
+```
+
+For a reproducible snapshot after a successful run:
+
+```bat
+python -m pip freeze > requirements-qwen.txt
+```
+
+## 11.2 Suggested Python File Layout
+
+The examples below use `python/qwen_server/`. If your files are elsewhere,
+adjust the terminal path; `Path(__file__)` resolves assets relative to each script.
+
+| File | Responsibility |
+| --- | --- |
+| `python/qwen_server/test_qwen.py` | Extract and save the voice prompt; generate a preview |
+| `python/qwen_server/reference.wav` | Clean source recording used during preparation |
+| `python/qwen_server/character_voice.pt` | Saved model ID and CPU voice-prompt tensors |
+| `python/qwen_server/output_clone.wav` | Preview for checking the cloned voice |
+| `python/qwen_server/server.py` | Load the saved voice and serve C++ synthesis requests |
+| `requirements-qwen.txt` | Optional snapshot of the working Python packages |
+
+## 11.3 Prepare the Reference Recording
+
+Use a clean, single-speaker English recording of about 5–10 seconds as a starting
+point. Avoid music, overlapping voices, clipping and long silences. The transcript
+must match what was actually spoken, including any changes made while recording.
+
+Example reference text:
+
+> Hello, this is my natural voice. I'm speaking clearly and calmly, just as I would in a normal conversation.
+
+In this project `x_vector_only_mode=False`: the prompt retains reference speech
+information and its transcript, not just a speaker embedding. A longer reference
+can increase the context processed during generation. Compare short references
+for both similarity and latency rather than assuming longer is better.
+
+## 11.4 Create character_voice.pt — test_qwen.py
+
+Save this as `test_qwen.py` beside `reference.wav`. Change `ref_text` if your
+recording says something different.
+Run once, then listen to `output_clone.wav`:
+
+```bat
+conda activate qwen3-tts
+cd /d "D:\project\virtual_agent\python\qwen_server"
+python test_qwen.py
+```
+
+The `.pt` file is generated locally, not downloaded as a ready-made character
+voice. Re-run this script only when changing the reference or model, or rebuilding
+the prompt after an incompatible package update. Restart the server after
+replacing the voice file. This dictionary format is a project convention, not a
+guaranteed version-independent Qwen interchange format; keep the working package
+versions with it.
+
+## 11.5 Use the Saved Voice — server.py
+
+The server reads the model ID from `character_voice.pt`, reconstructs
+`VoiceClonePromptItem` objects and loads the model once. It reuses both for every
+request. C++ does not load the `.pt` file directly.
+
+The lock prevents concurrent model generations. Disabling the reloader avoids
+loading the GPU model twice during Flask development startup. Flask is the local
+HTTP communication layer; Qwen3-TTS performs synthesis.
+
+## 11.6 HTTP Contract and C++ Playback
+
+Endpoint: `POST http://127.0.0.1:5000/tts`
+
+Request content type: `application/json`.
+
+```json
+{"text": "Hello! How are you today?"}
+```
+
+| Response field | Meaning |
+| --- | --- |
+| HTTP status `200` | Successful synthesis |
+| Body | Raw little-endian signed 16-bit PCM; no WAV header |
+| `Content-Type` | `application/octet-stream` |
+| `X-Sample-Rate` | Actual sample rate returned by Qwen; do not hard-code an earlier backend's rate |
+| `X-Channels` | `1` for mono |
+| HTTP status `400` | Invalid JSON or missing, non-string or empty text |
+
+`TTSEngine.cpp` must check HTTP success before interpreting the body as PCM and
+read the sample-rate/channel headers. `AudioPlayer.cpp` must configure its input
+buffer using that metadata and retain sample memory during playback. The endpoint
+and binary contract stay the same, so an existing client that follows them can
+continue to work. Set the HTTP read timeout long enough for model inference.
+
+## 11.7 Latency and Troubleshooting
+
+This implementation returns the complete sentence after synthesis; it does not
+stream audio. A saved prompt removes repeated reference-feature extraction but
+does not remove the cost of generating new speech.
+
+- RTF = generation seconds / generated audio seconds. RTF above 1 means synthesis
+  takes longer than playback. The measured development runs were about 2.1–2.6;
+  these are observations, not a performance guarantee.
+- First-run model loading and first-request GPU initialization can add delay.
+- Compare the same short sentence after warm-up when testing different references.
+- A shorter clean reference may reduce context cost; regenerate the `.pt` file
+  and restart the server to apply it.
+- `Setting pad_token_id to eos_token_id` is an informational generation message.
+- `No module named soxr`: run `python -m pip install soxr` in the active environment.
+- If CUDA is unavailable or a GPU-kernel compatibility error occurs, verify the
+  Python interpreter, NVIDIA driver and CUDA-enabled PyTorch installation.
+- If the audio sounds too fast, slow or pitched, check the C++ sample-rate settings.
+- Use a background C++ request worker to keep rendering responsive during inference;
+  this does not by itself make the model generate faster.
+
+Sources: [Qwen3-TTS official repository](https://github.com/QwenLM/Qwen3-TTS),
+[PyTorch installation guide](https://pytorch.org/get-started/locally/).
+
+---
+
+## 11.8 AudioBuffer
+
+The C++ audio data is represented by:
+
+```cpp
+struct AudioBuffer
+{
+    std::vector<int16_t> samples;
+    int sampleRate = 0;
+    int channels = 0;
+};
+```
+
+Responsibilities:
+
+```text
+samples
+→ Raw signed 16-bit PCM samples.
+
+sampleRate
+→ Number of audio frames per second.
+
+channels
+→ 1 = mono
+→ 2 = stereo
+```
+
+---
+
+## 11.9 C++ TTSEngine
+
+Main files:
+
+```text
+audio/TTSEngine.h
+audio/TTSEngine.cpp
+```
+
+The C++ `TTSEngine` does not run the neural network directly.
+
+Its responsibilities are:
+
+```text
+Receive std::string text
+        ↓
+Send HTTP POST request
+        ↓
+Receive PCM bytes
+        ↓
+Read sample rate / channel metadata
+        ↓
+Create AudioBuffer
+```
+
+Main interface:
+
+```cpp
+AudioBuffer synthesize(const std::string& text);
+```
+
+Conceptually:
+
+```cpp
+AudioBuffer audio =
+    tts.synthesize(
+        "Hello, this is my virtual character."
+    );
+```
+
+The HTTP client is implemented using:
+
+```text
+cpp-httplib
+```
+
+The project uses the header-only file:
+
+```text
+external/httplib/httplib.h
+```
+
+---
+
+## 11.10 cpp-httplib
+
+`cpp-httplib` is used by the C++ TTS client to communicate with the local Python server.
+
+Example installation layout:
+
+```text
+external/
+└── httplib/
+    └── httplib.h
+```
+
+Visual Studio include path:
+
+```text
+$(ProjectDir)external\httplib
+```
+
+Usage:
+
+```cpp
+#include "httplib.h"
+```
+
+The TTS client sends:
+
+```text
+POST http://127.0.0.1:5000/tts
+```
+
+and receives raw PCM data.
+
+---
+
+## 11.11 AudioPlayer
+
+Main files:
+
+```text
+audio/AudioPlayer.h
+audio/AudioPlayer.cpp
+```
+
+`AudioPlayer` uses:
+
+```text
+miniaudio
+```
+
+to play PCM audio directly from memory.
+
+The internal implementation follows the PImpl pattern:
+
+```text
+AudioPlayer
+    ↓
+Impl*
+    ↓
+ma_engine
+ma_audio_buffer
+ma_sound
+```
+
+Responsibilities:
+
+```text
+ma_engine
+→ Global miniaudio playback engine.
+
+ma_audio_buffer
+→ Wraps PCM samples stored in memory.
+
+ma_sound
+→ Playable sound object created from the PCM buffer.
+```
+
+The player keeps its own copy of the current PCM samples:
+
+```cpp
+std::vector<int16_t> currentSamples;
+```
+
+This is required because miniaudio playback is asynchronous.
+
+Without an owned copy:
+
+```text
+AudioBuffer destroyed
+        ↓
+PCM memory released
+        ↓
+miniaudio still reads old pointer
+        ↓
+Access violation
+```
+
+With `currentSamples`:
+
+```text
+AudioPlayer::Impl
+        ↓
+owns PCM memory
+        ↓
+miniaudio can safely read it while playing
+```
+
+---
+
+## 11.12 Speech Integration in main.cpp
+
+The speech system is integrated into the main character application.
+
+Main includes:
+
+```cpp
+#include "audio/TTSEngine.h"
+#include "audio/AudioPlayer.h"
+```
+
+Create the speech components once:
+
+```cpp
+TTSEngine tts;
+AudioPlayer audioPlayer;
+```
+
+During testing, a key can trigger speech:
+
+```text
+Press T
+   ↓
+Generate speech
+   ↓
+Play PCM
+   ↓
+Switch animation to Talk
+```
+The TTS call is currently synchronous.
+
+This means:
+
+```text
+Render Loop
+   ↓
+TTS Request
+   ↓
+Wait for Python inference
+   ↓
+Receive PCM
+   ↓
+Continue Rendering
+```
+
+A future improvement is to move TTS inference to a background thread.
+
+---
+
+## 11.13 Speech System Runtime Flow
+
+The complete current runtime pipeline is:
+
+```text
+User / C++ Trigger
+        ↓
+Text
+        ↓
+TTSEngine::synthesize()
+        ↓
+cpp-httplib
+        ↓
+HTTP POST /tts
+        ↓
+Python Flask Server
+        ↓
+Python Generates Speech PCM Using the Character's Voice
+        ↓
+HTTP Binary Response
+        ↓
+C++ AudioBuffer
+        ↓
+AudioPlayer
+        ↓
+ma_audio_buffer
+        ↓
+ma_sound
+        ↓
+miniaudio
+        ↓
+Speaker
+```
+
+Speech and character animation can be triggered together:
+
+```text
+Speech Trigger
+    ├──→ TTS → Audio Playback
+    │
+    └──→ AnimationController → Talk Animation
+```
+
+---
+
+## 11.14 Speech-Related File Responsibilities
+
+### Python
+
+```text
+python/qwen_server/server.py
+```
+
+Responsibilities:
+
+```text
+Flask HTTP server
+Load Qwen3-TTS model
+Receive text
+Generate speech
+Convert float32 PCM to int16 PCM
+Return raw audio bytes
+Return sample-rate/channel metadata
+```
+
+### C++
+
+```text
+audio/TTSEngine.h
+audio/TTSEngine.cpp
+```
+
+Responsibilities:
+
+```text
+Send text to Python server
+Receive binary PCM response
+Parse audio metadata
+Build AudioBuffer
+```
+
+```text
+audio/AudioBuffer.h
+```
+
+Responsibilities:
+
+```text
+Store PCM samples
+Store sample rate
+Store channel count
+```
+
+```text
+audio/AudioPlayer.h
+audio/AudioPlayer.cpp
+```
+
+Responsibilities:
+
+```text
+Initialize miniaudio
+Own PCM memory during playback
+Create ma_audio_buffer
+Create ma_sound
+Start audio playback
+```
+
+```text
+main.cpp
+```
+
+Responsibilities:
+
+```text
+Create TTSEngine
+Create AudioPlayer
+Trigger speech
+Trigger Talk animation
+Continue rendering the character
+```
+
+---
+
+## 11.15 Running the Speech System
+
+Start the Python environment:
+
+```bat
+conda activate qwen3-tts
+```
+
+Start the TTS server:
+
+```bat
+cd /d D:\project\virtual_agent\python\qwen_server
+python server.py
+```
+
+Keep this terminal running.
+
+Then start the C++ Virtual Agent from Visual Studio.
+
+Runtime:
+
+```text
+Terminal 1
+→ Python TTS Server
+
+Visual Studio
+→ C++ Virtual Agent
+```
+
+The C++ process sends text to the local Python server through:
+
+```text
+127.0.0.1:5000
+```
+
+No external network connection is required for the C++ ↔ Python communication.
+
+---
+
+
+# 12. Current Progress
 
 The following major milestones have now been completed:
 
@@ -1472,10 +2066,16 @@ The following major milestones have now been completed:
 - Added configurable repetition counts for every sequence state.
 - Added animation completion detection.
 - Added animation blending between clips.
+- Added a Python Qwen3-TTS voice-cloning speech backend.
+- Saved a reusable character voice prompt in `character_voice.pt`.
+- Added C++ `TTSEngine` HTTP communication.
+- Added in-memory PCM audio transfer.
+- Added miniaudio-based PCM playback.
+- Integrated speech triggering with the character `Talk` animation.
 
 ---
 
-# 12. Next Learning Steps
+# 13. Next Learning Steps
 
 The basic body-animation framework is now functional.
 
@@ -1585,7 +2185,7 @@ Bone Matrices
 
 ---
 
-# 13. Long-Term Direction
+# 14. Long-Term Direction
 
 The project can gradually evolve into:
 

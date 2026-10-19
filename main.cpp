@@ -177,26 +177,7 @@ int main()
             currentFrame;
 
 
-        // ---------------------------------------------
-        // Process keyboard input
-        // ---------------------------------------------
-        // Toggle animation with SPACE key.
-        //if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        //{
-        //    // Only trigger once when the key is pressed down.
-        //    if (!spacePressed)
-        //    {
-        //        animationPlaying = !animationPlaying;
-
-        //        spacePressed = true;
-        //    }
-        //}
-        //else
-        //{
-        //    // Key has been released.
-        //    spacePressed = false;
-        //}
-        // Move camera forward.
+      
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         {
             camera.moveForward(deltaTime);

@@ -173,7 +173,7 @@
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
     <None Include="python\openvoice_server\server.py" />
-    <None Include="python\openvoice_server\test_voice.py" />
+    <None Include="python\openvoice_server\test_qwen.py" />
     <None Include="README.md" />
     <None Include="vcpkg-configuration.json" />
     <None Include="vcpkg.json" />
