@@ -175,3 +175,10 @@ bool AudioPlayer::play(const AudioBuffer& buffer)
 
     return true;
 }
+
+bool AudioPlayer::isPlaying() const
+{
+	if (!impl->initialized || !impl->soundInitialized)
+		return false;
+	return ma_sound_at_end(&impl->sound) == 0;
+}

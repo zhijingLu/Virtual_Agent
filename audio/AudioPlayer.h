@@ -8,6 +8,8 @@ public:
 	~AudioPlayer();
     // Play PCM audio directly from memory.
 	bool play(const AudioBuffer& buffer);
+    bool isPlaying() const;
+
 private:
     // Forward declaration :
     // This only tells the compiler that

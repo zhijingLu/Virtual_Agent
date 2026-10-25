@@ -48,6 +48,24 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="character\CharacterController.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="input\SpeechRecognizer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\STTEngine.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="input\AudioRecorder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="input\WakeWordDetector.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="input\ConsoleInput.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="character\Mesh.h">
@@ -83,6 +101,24 @@
     <ClInclude Include="audio\TTSEngine.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="character\CharacterController.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="input\SpeechRecognizer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\STTEngine.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="input\AudioRecorder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="input\WakeWordDetector.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="input\ConsoleInput.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
@@ -91,7 +127,8 @@
     <None Include="vcpkg.json" />
     <None Include="vitual agent.slnx" />
     <None Include="README.md" />
-    <None Include="python\openvoice_server\server.py" />
-    <None Include="python\openvoice_server\test_qwen.py" />
+    <None Include="python\qwen_server\server.py" />
+    <None Include="python\qwen_server\qwen_tts_worker.py" />
+    <None Include="python\qwen_server\whisper_worker.py" />
   </ItemGroup>
 </Project>

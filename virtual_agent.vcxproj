@@ -121,14 +121,14 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\kws\sherpa-onnx-v1.13.8-win-x64-static-MT-Debug-no-tts\include;$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)vcpkg_installed\x64-windows-static\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;glad.lib;assimp-vc145-mtd.lib;pugixml.lib;poly2tri.lib;minizipsd.lib;kubazip.lib;zsd.lib;polyclipping.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)vcpkg_installed\x64-windows-static\debug\lib;$(ProjectDir)external\kws\sherpa-onnx-v1.13.8-win-x64-static-MT-Debug-no-tts\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;glad.lib;assimp-vc145-mtd.lib;pugixml.lib;poly2tri.lib;minizipsd.lib;kubazip.lib;zsd.lib;polyclipping.lib;sherpa-onnx-c-api.lib;sherpa-onnx-core.lib;sherpa-onnx-kaldifst-core.lib;sherpa-onnx-fst.lib;sherpa-onnx-fstfar.lib;kaldi-decoder-core.lib;kaldi-native-fbank-core.lib;kissfft-float.lib;ssentencepiece_core.lib;onnxruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
@@ -143,14 +143,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\sherpa-onnx\include;$(ProjectDir)external\httplib;$(ProjectDir)external\miniaudio;$(ProjectDir)vcpkg_installed\x64-windows-static\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)vcpkg_installed\x64-windows-static\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;glad.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)external\sherpa-onnx\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;glad.lib;sherpa-onnx-c-api.lib;onnxruntime.lib;assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
@@ -161,19 +161,26 @@
     <ClCompile Include="animation\animationController.cpp" />
     <ClCompile Include="animation\Animator.cpp" />
     <ClCompile Include="audio\AudioPlayer.cpp" />
+    <ClCompile Include="audio\STTEngine.cpp" />
     <ClCompile Include="audio\TTSEngine.cpp" />
     <ClCompile Include="character\Camera.cpp" />
+    <ClCompile Include="character\CharacterController.cpp" />
     <ClCompile Include="character\Mesh.cpp" />
     <ClCompile Include="character\Model.cpp" />
     <ClCompile Include="character\Shader.cpp" />
     <ClCompile Include="external\miniaudio\miniaudio.c" />
+    <ClCompile Include="input\AudioRecorder.cpp" />
+    <ClCompile Include="input\ConsoleInput.cpp" />
+    <ClCompile Include="input\SpeechRecognizer.cpp" />
+    <ClCompile Include="input\WakeWordDetector.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
-    <None Include="python\openvoice_server\server.py" />
-    <None Include="python\openvoice_server\test_qwen.py" />
+    <None Include="python\qwen_server\qwen_tts_worker.py" />
+    <None Include="python\qwen_server\server.py" />
+    <None Include="python\qwen_server\whisper_worker.py" />
     <None Include="README.md" />
     <None Include="vcpkg-configuration.json" />
     <None Include="vcpkg.json" />
@@ -185,12 +192,18 @@
     <ClInclude Include="animation\Animator.h" />
     <ClInclude Include="audio\AudioBuffer.h" />
     <ClInclude Include="audio\AudioPlayer.h" />
+    <ClInclude Include="audio\STTEngine.h" />
     <ClInclude Include="audio\TTSEngine.h" />
     <ClInclude Include="character\Camera.h" />
+    <ClInclude Include="character\CharacterController.h" />
     <ClInclude Include="character\Mesh.h" />
     <ClInclude Include="character\Model.h" />
     <ClInclude Include="character\Shader.h" />
     <ClInclude Include="external\miniaudio\miniaudio.h" />
+    <ClInclude Include="input\AudioRecorder.h" />
+    <ClInclude Include="input\ConsoleInput.h" />
+    <ClInclude Include="input\SpeechRecognizer.h" />
+    <ClInclude Include="input\WakeWordDetector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

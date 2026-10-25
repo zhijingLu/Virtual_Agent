@@ -24,7 +24,7 @@ Animator::Animator(
     //Animation Blending
     blending = false;
     blendTime = 0.0f;
-    blendDuration = 0.2f;
+    blendDuration = 0.5f;
 
     // Allocate fixed-size matrix array
     // for GPU skinning.

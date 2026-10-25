@@ -1,0 +1,31 @@
+# Virtual Agent Python dependencies
+# Recommended environment:
+#   conda create -n virtual-agent python=3.10 pip ffmpeg -c conda-forge -y
+#   conda activate virtual-agent
+#
+# Install with:
+#   python -m pip install --upgrade pip setuptools wheel
+#   python -m pip install -r requirements-virtual-agent.txt
+
+# PyTorch CUDA 13.0 wheels
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+torch==2.11.0
+torchaudio==2.11.0
+
+# Keep NumPy on the 1.x ABI used by this environment
+numpy==1.26.4
+
+# Scientific / audio stack
+scipy
+pandas
+scikit-learn
+librosa
+soundfile
+soxr
+sentencepiece
+
+# TTS / STT / HTTP server
+qwen-tts==0.1.1
+flask
+openai-whisper

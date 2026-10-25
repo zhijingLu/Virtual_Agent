@@ -73,7 +73,7 @@ public:
     //
     void playAnimation(
         Animation* animation,
-        float blendDuration = 0.2f
+        float blendDuration = 0.5f
     );
 
 

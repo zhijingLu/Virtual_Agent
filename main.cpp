@@ -9,12 +9,16 @@
 #include "character/Shader.h"
 #include "character/Model.h"
 #include "character/Camera.h"
-#include "animation/Animation.h"
-#include "animation/Animator.h"
+//#include "animation/Animation.h"
+//#include "animation/Animator.h"
 #include "animation/AnimationController.h"
 //speech related files
-#include "audio/TTSEngine.h"
-#include "audio/AudioPlayer.h"
+
+#include "character/CharacterController.h"
+
+//#include "input/ConsoleInput.h"
+#include "input/SpeechRecognizer.h"
+#include "input/AudioRecorder.h"
 //vcpkg install --triplet x64-windows-static
 int main()
 {
@@ -154,12 +158,55 @@ int main()
     // -------------------------------------------------
     // Speech system
     // -------------------------------------------------
-    TTSEngine tts;
-    AudioPlayer player;
+   
+
+    CharacterController characterController(
+        &animationController
+    );
     bool speechKeyPressed = false;
+    bool speechActive = false;
+
+    // -------------------------------------------------
+	// thread for console input
+    // -------------------------------------------------
+    //   ConsoleInput consoleInput;
+
+    //   consoleInput.start();
+    // -------------------------------------------------
+    // Speech recognition
+    // -------------------------------------------------
+
+    SpeechRecognizer speechRecognizer;
+
+    speechRecognizer.start();
+    // -------------------------------------------------
+    // Microphone
+    // -------------------------------------------------
+
+    AudioRecorder audioRecorder;
+    bool microphoneStarted =
+        audioRecorder.start(
+            [&speechRecognizer](const AudioBuffer& chunk)
+            {
+                speechRecognizer.processAudioChunk(chunk);
+            }
+        );
+
+
+    if (!microphoneStarted)
+    {
+        std::cerr
+            << "Failed to start microphone."
+            << std::endl;
+
+        return -1;
+    }
+
     // -------------------------------------------------
     // 10. Main render loop
     // -------------------------------------------------
+
+   
 
     while (!glfwWindowShouldClose(window))
     {
@@ -178,44 +225,158 @@ int main()
 
 
       
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        {
-            camera.moveForward(deltaTime);
-        }
+        //if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        //{
+        //    camera.moveForward(deltaTime);
+        //}
 
-        // Move camera backward.
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        {
-            camera.moveBackward(deltaTime);
-        }
+        //// Move camera backward.
+        //if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        //{
+        //    camera.moveBackward(deltaTime);
+        //}
 
-        // Move camera left.
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        {
-            camera.moveLeft(deltaTime);
-        }
+        //// Move camera left.
+        //if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        //{
+        //    camera.moveLeft(deltaTime);
+        //}
 
-        // Move camera right.
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        {
-            camera.moveRight(deltaTime);
-        }
+        //// Move camera right.
+        //if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        //{
+        //    camera.moveRight(deltaTime);
+        //}
 
-        // Press ESC to close the window.
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        //// Press ESC to close the window.
+        //if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        //{
+        //    glfwSetWindowShouldClose(
+        //        window,
+        //        true
+        //    );
+        //}
+
+
+        //
+        //
+        //if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::Idle
+        //    );
+        //}
+
+        //if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::Walk
+        //    );
+        //}
+
+        //if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::Run
+        //    );
+        //}
+
+        //if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::Talk
+        //    );
+        //}
+
+        //if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::StandToSit
+        //    );
+        //}
+
+        //if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+        //{
+        //    characterController.setState(
+        //        CharacterState::Sitting
+        //    );
+        //}
+        //if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+        //{
+        //    animationController.playSequence(
+        //        {
+        //            { AnimationState::Idle, 1 },
+        //            { AnimationState::Walk, 4 },
+        //            { AnimationState::Idle, 1 },
+        //            { AnimationState::Run, 3 }
+        //        }
+        //    );
+        //}
+        // -------------------------------------------------
+        // Press T to make the character speak.
+        // -------------------------------------------------
+
+        //if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+        //{
+        //    // Trigger only once per key press.
+        //    if (!speechKeyPressed)
+        //    {
+        //        speechKeyPressed = true;
+
+        //        std::string text =
+        //            "Hello, I am your virtual character，zhijing Lu. I am here to help you. What can I do for you? I am in aachen now, do you want to make a travel?";
+
+        //   
+        //        characterController.speak(text);
+        //        
+        //    }
+        //}
+        //else
+        //{
+        //    // Key released, allow another trigger.
+        //    speechKeyPressed = false;
+        //}
+       
+
+        //std::string userInput;
+        //if (consoleInput.tryPop(userInput))
+        //{
+        //    std::cout
+        //        << "Received: "
+        //        << userInput
+        //        << std::endl;
+
+        //    characterController.speak(userInput);
+        //}
+        // -------------------------------------------------
+        // Check Whisper result
+        // -------------------------------------------------
+
+        std::string recognizedText;
+
+        if (
+            speechRecognizer.tryGetText(
+                recognizedText
+            )
+        )
         {
-            glfwSetWindowShouldClose(
-                window,
-                true
+            std::cout
+                << "User: "
+                << recognizedText
+                << std::endl;
+
+
+            // Temporary test:
+            // Let Lily repeat what you said.
+            characterController.speak(
+                recognizedText
             );
         }
 
-
-        
         // -----------------------------------------
-       // Update animation
-       // -----------------------------------------
-        animationController.update(
+        // Update animation
+        // -----------------------------------------
+        characterController.update(
             deltaTime
         );
         //animator.updateAnimation(
@@ -227,105 +388,6 @@ int main()
                 deltaTime* animationSpeed
             );
         }*/
-        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::Idle
-            );
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::Walk
-            );
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::Run
-            );
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::Talk
-            );
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::StandToSit
-            );
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-        {
-            animationController.playState(
-                AnimationState::Sitting
-            );
-        }
-        if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-        {
-            animationController.playSequence(
-                {
-                    { AnimationState::Idle, 1 },
-                    { AnimationState::Walk, 4 },
-                    { AnimationState::Idle, 1 },
-                    { AnimationState::Run, 3 }
-                }
-            );
-        }
-        // -------------------------------------------------
-        // Press T to make the character speak.
-        // -------------------------------------------------
-
-        if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-        {
-            // Trigger only once per key press.
-            if (!speechKeyPressed)
-            {
-                speechKeyPressed = true;
-
-                std::string text =
-                    "Hello, I am your virtual character，zhijing Lu. I am here to help you. What can I do for you?";
-
-             
-                AudioBuffer audio =
-                    tts.synthesize(text);
-
-                if (!audio.samples.empty())
-                {
-                    std::cout
-                        << "Audio generated: "
-                        << audio.samples.size()
-                        << " samples"
-                        << std::endl;
-
-                    player.play(audio);
-
-                    // Optional:
-                    // switch character to talking animation.
-                    animationController.playState(
-                        AnimationState::Talk
-                    );
-                }
-                else
-                {
-                    std::cerr
-                        << "Failed to generate speech."
-                        << std::endl;
-                }
-            }
-        }
-        else
-        {
-            // Key released, allow another trigger.
-            speechKeyPressed = false;
-        }
         // ---------------------------------------------
         // Clear previous frame
         // ---------------------------------------------
@@ -511,7 +573,7 @@ int main()
     // -------------------------------------------------
     // 11. Clean up
     // -------------------------------------------------
-
+    //consoleInput.stop();
     glfwDestroyWindow(window);
 
     glfwTerminate();

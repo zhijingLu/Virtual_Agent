@@ -15,3 +15,4 @@ vcpkg_installed/
 *.opendb
 
 intermediate/
+external/kws/
