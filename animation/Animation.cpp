@@ -62,24 +62,24 @@ void Animation::readAnimation(
         return;
     }
 
-    std::cout
-        << "Number of animations: "
-        << scene->mNumAnimations
-        << std::endl;
+    //std::cout
+    //    << "Number of animations: "
+    //    << scene->mNumAnimations
+    //    << std::endl;
 
-    for (
-        unsigned int i = 0;
-        i < scene->mNumAnimations;
-        ++i
-        )
-    {
-        std::cout
-            << "Animation "
-            << i
-            << ": "
-            << scene->mAnimations[i]->mName.C_Str()
-            << std::endl;
-    }
+    //for (
+    //    unsigned int i = 0;
+    //    i < scene->mNumAnimations;
+    //    ++i
+    //    )
+    //{
+    //    std::cout
+    //        << "Animation "
+    //        << i
+    //        << ": "
+    //        << scene->mAnimations[i]->mName.C_Str()
+    //        << std::endl;
+    //}
     // Check whether this model actually contains
     // at least one animation.
     if (scene->mNumAnimations == 0)
@@ -322,22 +322,22 @@ void Animation::readAnimation(
             model->getBoneInfo();
     }
 
-    std::cout
-        << "Animation duration: "
-        << duration
-        << std::endl;
+    //std::cout
+    //    << "Animation duration: "
+    //    << duration
+    //    << std::endl;
 
 
-    std::cout
-        << "Ticks per second: "
-        << ticksPerSecond
-        << std::endl;
+    //std::cout
+    //    << "Ticks per second: "
+    //    << ticksPerSecond
+    //    << std::endl;
 
 
-    std::cout
-        << "Animation channels: "
-        << boneAnimations.size()
-        << std::endl;
+    //std::cout
+    //    << "Animation channels: "
+    //    << boneAnimations.size()
+    //    << std::endl;
 }
 
 

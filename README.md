@@ -1,6 +1,6 @@
 # Virtual Agent
 
-A C++ / OpenGL virtual character with skeletal animation, voice cloning, wake-word detection, and speech recognition. Python provides a local Qwen3-TTS and Whisper service.
+A C++ / OpenGL virtual character with skeletal animation, voice cloning, wake-word detection, speech recognition, and LLM-based voice conversation. Python runs Whisper, Qwen3-0.6B, and Qwen3-TTS locally.
 
 ## 1. Requirements and Setup
 
@@ -16,6 +16,8 @@ A C++ / OpenGL virtual character with skeletal animation, voice cloning, wake-wo
 | Python | Python 3.10; development environment used 3.10.22 |
 | GPU | NVIDIA RTX 5060 Laptop GPU |
 | PyTorch / torchaudio | 2.11.0, CUDA 13.0 wheels (`cu130`) |
+| Dialogue LLM | `Qwen/Qwen3-0.6B`, BF16 on CUDA, thinking disabled |
+| LLM runtime | Hugging Face Transformers; retain the working environment version |
 | Qwen package | `qwen-tts==0.1.1` |
 | NumPy | 1.26.4 |
 | Wake-word runtime | sherpa-onnx 1.13.8, Windows x64 shared MT Release, no-TTS package  |
@@ -30,7 +32,7 @@ curl.exe -fL -o kws-model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/release
 tar -xf kws-model.tar.bz2
 ```
 
-These are the recorded project versions, rather than a latest-version list. Exact Visual Studio, Whisper, and remaining library versions were not supplied; retain the working environment's versions.
+These are the recorded project versions, rather than a latest-version list. Exact Visual Studio, Transformers, Whisper, and remaining library versions were not supplied; retain the working environment's versions.
 
 ### C++ Dependencies
 
@@ -73,8 +75,11 @@ python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://downl
 python -m pip install numpy==1.26.4
 python -m pip install scipy pandas scikit-learn librosa soundfile soxr sentencepiece
 python -m pip install qwen-tts==0.1.1 flask openai-whisper
+python -m pip show transformers
 python -m pip check
 ```
+
+The LLM worker imports `AutoTokenizer` and `AutoModelForCausalLM` from `transformers`. Reuse the version installed in the working Qwen-TTS environment; avoid blindly upgrading shared dependencies.
 
 FFmpeg supports audio-file decoding. The C++ / Python runtime transfers raw PCM directly. `soxr` is a Python resampling library and is different from the SoX command-line program. This setup uses PyTorch SDPA attention without a separate FlashAttention installation.
 
@@ -84,7 +89,7 @@ Check GPU access:
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
 ```
 
-After successfully running both TTS and STT, record the complete package versions:
+After successfully running TTS, STT, and chat, record the complete package versions:
 
 ```bat
 python -m pip freeze > requirements-virtual-agent.txt
@@ -102,7 +107,9 @@ python -m pip install -r requirements-virtual-agent.txt
 | --- | --- |
 | Qwen3-TTS | `Qwen/Qwen3-TTS-12Hz-0.6B-Base`; downloaded on first load and cached locally |
 | Character voice | Generate `character_voice.pt` using `test_qwen.py` |
-| Whisper | Use the model name configured in `server.py`; its exact name was not supplied |
+| Whisper | `base`, configured in `whisper_worker.py`, running on CUDA |
+| Dialogue model | `Qwen/Qwen3-0.6B`; downloaded on first load and cached locally |
+| Character instructions | Configure identity, language, and reply length through `system_prompt` in `llm_worker.py` |
 | Wake-word model | Extract the sherpa-onnx model and configure encoder, decoder, joiner, and token-file paths |
 | Wake words | Configure the keyword file using the model's token format; current example phrase: “hello, lily” |
 | HTTP service | Match the C++ clients and Flask server; existing service address: `127.0.0.1:5000` |
@@ -163,11 +170,16 @@ The file names below identify modules; keep their directory prefixes consistent 
 | `AudioBuffer.h` | Store `int16_t` PCM samples, sample rate, and channel count |
 | `AudioRecorder.cpp` | Capture microphone audio with miniaudio and deliver chunks through a callback |
 | `WakeWordDetector.cpp` | Feed audio to sherpa-onnx and report a detected wake word |
-| `SpeechRecognizer.cpp` | Maintain recent audio, collect a triggered recording, and pass completed audio to the STT worker |
+| `SpeechRecognizer.cpp` | Maintain recent audio, collect a triggered recording, request a reply through ChatEngine on a background thread, and queue returned audio |
 | `STTEngine.cpp` | Send PCM to Python's `/stt` endpoint and return recognized text |
 | `TTSEngine.cpp` | Send text to `/tts` and build an `AudioBuffer` from the PCM response |
+| `ChatEngine.cpp` | Send recorded PCM to `/chat` and reconstruct the returned reply AudioBuffer |
+| `CharacterController.cpp` | Accept reply audio through `speakAudio()`; play pending audio in `update()` and control Talk / Idle |
 | `AudioPlayer.cpp` | Play PCM with miniaudio and retain sample memory during playback |
-| `server.py` | Load Qwen3-TTS, the saved voice prompt, and Whisper; serve TTS and STT requests |
+| `server.py` | Start the workers and coordinate `/chat`: Whisper → LLM → TTS; retain `/stt` and `/tts` |
+| `whisper_worker.py` | Process queued recordings with Whisper |
+| `llm_worker.py` | Process queued text with Qwen3-0.6B and return a short answer |
+| `tts_worker.py` / `qwen_tts_worker.py` | Process queued text with Qwen3-TTS; use the filename imported by server.py |
 | `test_qwen.py` | Create the reusable voice prompt and a preview WAV |
 
 ### Microphone and Wake-Word Detection
@@ -176,7 +188,7 @@ The file names below identify modules; keep their directory prefixes consistent 
 
 `AudioRecorder::start()` stores a callback. Whenever a new audio chunk arrives, the callback calls `speechRecognizer.processAudioChunk(chunk)`.
 
-While waiting, `SpeechRecognizer` keeps recent audio in `rollingBuffer`. When `notifyWakeWordDetected()` runs, it copies that history into `recordedSamples`. Subsequent chunks are appended until the configured recording-end condition is met. The completed audio is queued for transcription.
+While waiting, `SpeechRecognizer` keeps recent audio in `rollingBuffer`. When `notifyWakeWordDetected()` runs, it copies that history into `recordedSamples`. Subsequent chunks are appended until the configured recording-end condition is met. The completed audio is queued for the background chat request.
 
 The rolling buffer preserves audio around the trigger; subsequent chunks capture the rest of the spoken command. The trigger chunk should be included only once.
 
@@ -200,6 +212,32 @@ The server loads the model and voice prompt once, then reuses them. The TTS resp
 
 Speech synthesis is requested asynchronously. During playback, the character uses Talk; after playback ends, it returns to Idle.
 
+### Voice Conversation — Whisper + LLM + TTS
+
+**Flow:** microphone → SpeechRecognizer → ChatEngine → `POST /chat` → Whisper → LLM → Qwen3-TTS → reply audio → CharacterController → AudioPlayer.
+
+The client sends raw signed 16-bit little-endian PCM with `X-Sample-Rate` and `X-Channels`. The current server expects 16000 Hz recording and supports mono or stereo; the Whisper worker mixes stereo to mono. Changing the metadata alone does not resample audio.
+
+The Flask request waits for each worker in order: recognized text from Whisper, reply text from the LLM, then audio from TTS. Intermediate text stays on the server. Each Python worker uses a request object, Queue, Thread, and completion Event; models load once at startup.
+
+The LLM uses `Qwen/Qwen3-0.6B`, BF16 on CUDA, and SDPA attention. Its chat template includes system instructions and the current user message with `enable_thinking=False`. The initial version answers each request independently without conversation history. Prefer short spoken replies to reduce TTS waiting time.
+
+The `/chat` response contains raw int16 PCM and audio-format headers. ChatEngine reads the returned sample rate and channel count and uses a longer HTTP read timeout for the complete pipeline.
+
+| C++ step | Work completed |
+| --- | --- |
+| `SpeechRecognizer::workerLoop()` | Call `chatEngine.chat(audio)` and put the reply in a mutex-protected `replyQueue` |
+| `tryGetReply(AudioBuffer& audio)` | Move a queued reply into the caller's buffer; return whether one was available |
+| Main loop | Pass the reply to `CharacterController::speakAudio()` |
+| `CharacterController::speakAudio()` | Store the reply in `pendingAudio` |
+| `CharacterController::update()` | Play pending audio, enter Talk, then return to Idle after playback |
+
+Keep HTTP calls off the rendering thread and microphone callback. Update the rolling buffer once per microphone chunk. Standalone STTEngine, TTSEngine, and `speak(text)` remain available.
+
+### Current Latency
+
+The full reply is synthesized before it is returned; streaming playback is not implemented. One measured TTS run took 11.55 seconds for 5.36 seconds of audio (RTF 2.15), excluding STT and LLM time. Shorter replies reduce the amount of audio to generate. Worker threads keep the application responsive but do not automatically accelerate model inference; the models and renderer share GPU resources.
+
 ## 6. Run the Project
 
 1. Finish the C++ dependency setup and configure asset/model paths.
@@ -212,10 +250,11 @@ Speech synthesis is requested asynchronously. During playback, the character use
    ```
 
 4. Keep the server running and launch the C++ application from Visual Studio.
-5. Use the configured speech trigger to test TTS. Say the configured wake phrase followed by a command to test recording and Whisper transcription.
+5. Say the configured wake phrase followed by a question. Check the recognized text and LLM reply on the server, then verify speech playback and Talk / Idle transitions.
+6. Test `/stt` and `/tts` separately when checking individual stages.
 
 ## 7. Current Status
 
-Implemented: custom GLB character, rendering, skeletal animation, animation sequences and blending, Qwen3-TTS voice cloning, PCM playback, microphone recording, wake-word detection, and Whisper STT.
+Implemented: custom GLB character, rendering, skeletal animation, animation sequences and blending, Qwen3-TTS voice cloning, PCM playback, microphone recording, wake-word detection, Whisper STT, a dedicated LLM worker, server-side Whisper → LLM → TTS conversation, and C++ ChatEngine reply playback.
 
-Next: connect recognized text to a dialogue/response layer, then add facial animation and lip synchronization.
+Next: reduce speech latency, add conversation history, then add facial animation and lip synchronization.

@@ -8,7 +8,8 @@
 #include <vector>
 
 #include "../audio/AudioBuffer.h"
-#include "../audio/STTEngine.h"
+//#include "../audio/STTEngine.h"
+#include "../chat/ChatEngine.h"
 #include <deque>
 #include "WakeWordDetector.h"
 enum class RecognitionState
@@ -38,6 +39,8 @@ public:
 
     // Read recognized text from the main thread.
     bool tryGetText(std::string& text);
+    // Read the reply audio from the main thread.
+    bool tryGetReply(AudioBuffer& audio);
 
     RecognitionState getState() const;
 
@@ -92,8 +95,8 @@ private:
     // Whisper worker
     // -------------------------------------------------
 
-    STTEngine stt;
-
+    //STTEngine stt;
+    ChatEngine chatEngine;
     std::thread workerThread;
 
     std::atomic<bool> running{ false };
@@ -112,10 +115,12 @@ private:
     // Recognized text queue
     // -------------------------------------------------
 
-    std::mutex textMutex;
-
-    std::queue<std::string> textQueue;
-
+    //std::mutex textMutex;
+    //std::queue<std::string> textQueue;
+    
+	//rely audio queue
+    std::mutex replyMutex;
+    std::queue<AudioBuffer> replyQueue;
     
 
     // Rolling buffer:

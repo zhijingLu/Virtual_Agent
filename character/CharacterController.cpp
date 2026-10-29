@@ -1,5 +1,5 @@
 #include "CharacterController.h"
-
+#include <utility>
 
 
 CharacterController::CharacterController(
@@ -91,6 +91,17 @@ void CharacterController::speak(
 
             ttsRunning = false;
         });
+}
+
+
+void CharacterController::speakAudio(AudioBuffer audio)
+{
+    if (audio.samples.empty())
+        return;
+
+    std::lock_guard<std::mutex> lock(audioMutex);
+
+    pendingAudio = std::move(audio);
 }
 
 void CharacterController::update(

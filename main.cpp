@@ -225,152 +225,17 @@ int main()
 
 
       
-        //if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        //{
-        //    camera.moveForward(deltaTime);
-        //}
-
-        //// Move camera backward.
-        //if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        //{
-        //    camera.moveBackward(deltaTime);
-        //}
-
-        //// Move camera left.
-        //if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        //{
-        //    camera.moveLeft(deltaTime);
-        //}
-
-        //// Move camera right.
-        //if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        //{
-        //    camera.moveRight(deltaTime);
-        //}
-
-        //// Press ESC to close the window.
-        //if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        //{
-        //    glfwSetWindowShouldClose(
-        //        window,
-        //        true
-        //    );
-        //}
-
-
-        //
-        //
-        //if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::Idle
-        //    );
-        //}
-
-        //if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::Walk
-        //    );
-        //}
-
-        //if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::Run
-        //    );
-        //}
-
-        //if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::Talk
-        //    );
-        //}
-
-        //if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::StandToSit
-        //    );
-        //}
-
-        //if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-        //{
-        //    characterController.setState(
-        //        CharacterState::Sitting
-        //    );
-        //}
-        //if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-        //{
-        //    animationController.playSequence(
-        //        {
-        //            { AnimationState::Idle, 1 },
-        //            { AnimationState::Walk, 4 },
-        //            { AnimationState::Idle, 1 },
-        //            { AnimationState::Run, 3 }
-        //        }
-        //    );
-        //}
         // -------------------------------------------------
-        // Press T to make the character speak.
+        // Check chat result
         // -------------------------------------------------
 
-        //if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-        //{
-        //    // Trigger only once per key press.
-        //    if (!speechKeyPressed)
-        //    {
-        //        speechKeyPressed = true;
+        AudioBuffer reply;
 
-        //        std::string text =
-        //            "Hello, I am your virtual character，zhijing Lu. I am here to help you. What can I do for you? I am in aachen now, do you want to make a travel?";
-
-        //   
-        //        characterController.speak(text);
-        //        
-        //    }
-        //}
-        //else
-        //{
-        //    // Key released, allow another trigger.
-        //    speechKeyPressed = false;
-        //}
-       
-
-        //std::string userInput;
-        //if (consoleInput.tryPop(userInput))
-        //{
-        //    std::cout
-        //        << "Received: "
-        //        << userInput
-        //        << std::endl;
-
-        //    characterController.speak(userInput);
-        //}
-        // -------------------------------------------------
-        // Check Whisper result
-        // -------------------------------------------------
-
-        std::string recognizedText;
-
-        if (
-            speechRecognizer.tryGetText(
-                recognizedText
-            )
-        )
+        if (speechRecognizer.tryGetReply(reply))
         {
-            std::cout
-                << "User: "
-                << recognizedText
-                << std::endl;
-
-
-            // Temporary test:
-            // Let Lily repeat what you said.
-            characterController.speak(
-                recognizedText
-            );
+            
+            characterController.speakAudio(std::move(reply));
+        
         }
 
         // -----------------------------------------
@@ -379,15 +244,7 @@ int main()
         characterController.update(
             deltaTime
         );
-        //animator.updateAnimation(
-        //    deltaTime
-        //);
-        /* if (animationPlaying)
-        {
-            animator.updateAnimation(
-                deltaTime* animationSpeed
-            );
-        }*/
+        
         // ---------------------------------------------
         // Clear previous frame
         // ---------------------------------------------

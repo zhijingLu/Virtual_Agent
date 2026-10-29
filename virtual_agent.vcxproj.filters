@@ -45,9 +45,6 @@
     <ClCompile Include="audio\TTSEngine.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="character\CharacterController.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -64,6 +61,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="input\ConsoleInput.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="chat\chatEngine.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -119,6 +122,9 @@
     <ClInclude Include="input\ConsoleInput.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="chat\chatEngine.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
@@ -128,7 +134,8 @@
     <None Include="vitual agent.slnx" />
     <None Include="README.md" />
     <None Include="python\qwen_server\server.py" />
-    <None Include="python\qwen_server\qwen_tts_worker.py" />
+    <None Include="python\qwen_server\tts_worker.py" />
     <None Include="python\qwen_server\whisper_worker.py" />
+    <None Include="python\qwen_server\llm_worker.py" />
   </ItemGroup>
 </Project>

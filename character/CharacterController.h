@@ -31,6 +31,8 @@ public:
 
     void speak(const std::string& text);
 
+    void speakAudio(AudioBuffer audio);
+
     CharacterState getState() const;
 
 private:

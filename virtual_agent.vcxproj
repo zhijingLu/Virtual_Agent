@@ -168,6 +168,7 @@
     <ClCompile Include="character\Mesh.cpp" />
     <ClCompile Include="character\Model.cpp" />
     <ClCompile Include="character\Shader.cpp" />
+    <ClCompile Include="chat\chatEngine.cpp" />
     <ClCompile Include="external\miniaudio\miniaudio.c" />
     <ClCompile Include="input\AudioRecorder.cpp" />
     <ClCompile Include="input\ConsoleInput.cpp" />
@@ -178,7 +179,8 @@
   <ItemGroup>
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
-    <None Include="python\qwen_server\qwen_tts_worker.py" />
+    <None Include="python\qwen_server\llm_worker.py" />
+    <None Include="python\qwen_server\tts_worker.py" />
     <None Include="python\qwen_server\server.py" />
     <None Include="python\qwen_server\whisper_worker.py" />
     <None Include="README.md" />
@@ -199,6 +201,7 @@
     <ClInclude Include="character\Mesh.h" />
     <ClInclude Include="character\Model.h" />
     <ClInclude Include="character\Shader.h" />
+    <ClInclude Include="chat\chatEngine.h" />
     <ClInclude Include="external\miniaudio\miniaudio.h" />
     <ClInclude Include="input\AudioRecorder.h" />
     <ClInclude Include="input\ConsoleInput.h" />

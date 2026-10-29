@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <utility>
-
+#include <exception>
 
 SpeechRecognizer::SpeechRecognizer()
     :wakeWordDetector(
@@ -158,7 +158,7 @@ void SpeechRecognizer::processAudioChunk(
         state ==RecognitionState::WaitingForWakeWord
         )
     {
-        updateRollingBuffer(chunk);
+        //updateRollingBuffer(chunk);
 
         bool detected =
             wakeWordDetector.process(
@@ -378,40 +378,81 @@ void SpeechRecognizer::workerLoop()
         }
 
 
-        // ---------------------------------------------
-        // Whisper STT
-        // ---------------------------------------------
+        //// ---------------------------------------------
+        //// Whisper STT
+        //// ---------------------------------------------
 
+        //std::cout
+        //    << "Sending audio to Whisper..."
+        //    << std::endl;
+
+
+        //std::string result =
+        //    stt.transcribe(audio);
+
+
+        //if (result.empty())
+        //    continue;
+
+
+        //// ---------------------------------------------
+        //// Store recognized text
+        //// ---------------------------------------------
+
+        //{
+        //    std::lock_guard<std::mutex> lock(
+        //        textMutex
+        //    );
+
+        //    textQueue.push(
+        //        std::move(result)
+        //    );
+        //}
+
+        // ---------------------------------------------
+		// chat part send audio to chat server and get audio reply
+        // ---------------------------------------------
         std::cout
-            << "Sending audio to Whisper..."
+            << "Sending audio to chat server..."
             << std::endl;
 
-
-        std::string result =
-            stt.transcribe(audio);
-
-
-        if (result.empty())
-            continue;
-
-
-        // ---------------------------------------------
-        // Store recognized text
-        // ---------------------------------------------
-
+        try
         {
-            std::lock_guard<std::mutex> lock(
-                textMutex
-            );
+            AudioBuffer reply = chatEngine.chat(audio);
 
-            textQueue.push(
-                std::move(result)
-            );
+            if (reply.samples.empty())
+                continue;
+
+            // Do not publish a result after shutdown was requested.
+            if (!running)
+                break;
+
+            std::lock_guard<std::mutex> lock(replyMutex);
+
+            replyQueue.push(std::move(reply));
+        }
+        catch (const std::exception& error)
+        {
+            std::cerr
+                << "Chat request failed: "
+                << error.what()
+                << std::endl;
         }
     }
 }
 
+bool SpeechRecognizer::tryGetReply(AudioBuffer& audio)
+{
+    std::lock_guard<std::mutex> lock(replyMutex);
 
+    if (replyQueue.empty())
+        return false;
+
+    audio = std::move(replyQueue.front());
+    replyQueue.pop();
+
+    return true;
+}
 // -------------------------------------------------
 // Get recognized text
 // -------------------------------------------------
@@ -420,22 +461,22 @@ bool SpeechRecognizer::tryGetText(
     std::string& text
 )
 {
-    std::lock_guard<std::mutex> lock(
-        textMutex
-    );
+    //std::lock_guard<std::mutex> lock(
+    //    textMutex
+    //);
 
 
-    if (textQueue.empty())
-        return false;
+    //if (textQueue.empty())
+    //    return false;
 
 
-    text =
-        std::move(
-            textQueue.front()
-        );
+    //text =
+    //    std::move(
+    //        textQueue.front()
+    //    );
 
 
-    textQueue.pop();
+    //textQueue.pop();
 
 
     return true;
