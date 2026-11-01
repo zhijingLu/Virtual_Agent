@@ -3,7 +3,7 @@
 #include <string>
 
 #include "../animation/AnimationController.h"
-#include "../audio/TTSEngine.h"
+//#include "../audio/TTSEngine.h"
 #include "../audio/AudioPlayer.h"
 #include <atomic>
 #include <mutex>
@@ -34,11 +34,12 @@ public:
     void speakAudio(AudioBuffer audio);
 
     CharacterState getState() const;
+    bool isSpeaking() const;
 
 private:
     AnimationController* animationController;
 
-    TTSEngine tts;
+    //TTSEngine tts;
     AudioPlayer player;
 
     CharacterState currentState;

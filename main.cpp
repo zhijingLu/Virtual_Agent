@@ -15,10 +15,12 @@
 //speech related files
 
 #include "character/CharacterController.h"
-
+#include "chat/ConversationClient.h"
+#include <string>
+#include <utility>
 //#include "input/ConsoleInput.h"
-#include "input/SpeechRecognizer.h"
-#include "input/AudioRecorder.h"
+//#include "input/SpeechRecognizer.h"
+//#include "input/AudioRecorder.h"
 //vcpkg install --triplet x64-windows-static
 int main()
 {
@@ -163,8 +165,21 @@ int main()
     CharacterController characterController(
         &animationController
     );
-    bool speechKeyPressed = false;
-    bool speechActive = false;
+    //bool speechKeyPressed = false;
+    //bool speechActive = false;
+    // -------------------------------------------------
+	// Get the conversation reply from the server
+    // -------------------------------------------------
+
+    ConversationClient conversationClient(
+        "127.0.0.1",
+        5000
+    );
+
+    conversationClient.start();
+
+    std::string currentReplyId;
+    bool replyActive = false;
 
     // -------------------------------------------------
 	// thread for console input
@@ -176,31 +191,31 @@ int main()
     // Speech recognition
     // -------------------------------------------------
 
-    SpeechRecognizer speechRecognizer;
+    //SpeechRecognizer speechRecognizer;
 
-    speechRecognizer.start();
+    //speechRecognizer.start();
     // -------------------------------------------------
     // Microphone
     // -------------------------------------------------
 
-    AudioRecorder audioRecorder;
-    bool microphoneStarted =
-        audioRecorder.start(
-            [&speechRecognizer](const AudioBuffer& chunk)
-            {
-                speechRecognizer.processAudioChunk(chunk);
-            }
-        );
+    //AudioRecorder audioRecorder;
+    //bool microphoneStarted =
+    //    audioRecorder.start(
+    //        [&speechRecognizer](const AudioBuffer& chunk)
+    //        {
+    //            speechRecognizer.processAudioChunk(chunk);
+    //        }
+    //    );
 
 
-    if (!microphoneStarted)
-    {
-        std::cerr
-            << "Failed to start microphone."
-            << std::endl;
+    //if (!microphoneStarted)
+    //{
+    //    std::cerr
+    //        << "Failed to start microphone."
+    //        << std::endl;
 
-        return -1;
-    }
+    //    return -1;
+    //}
 
     // -------------------------------------------------
     // 10. Main render loop
@@ -229,13 +244,34 @@ int main()
         // Check chat result
         // -------------------------------------------------
 
-        AudioBuffer reply;
+        //AudioBuffer reply;
+        bool replyReceived = false;
 
-        if (speechRecognizer.tryGetReply(reply))
+        if (!replyActive)
         {
-            
-            characterController.speakAudio(std::move(reply));
-        
+		    ConversationReply reply;
+            if (conversationClient.tryGetReply(reply))
+            {
+
+                currentReplyId = reply.replyId;
+
+                std::cout
+                    << "User: "
+                    << reply.userText
+                    << '\n';
+
+                std::cout
+                    << "Lily: "
+                    << reply.replyText
+                    << '\n';
+
+                characterController.speakAudio(
+                    std::move(reply.audio)
+                );
+
+                replyActive = true;
+                replyReceived = true;
+            }
         }
 
         // -----------------------------------------
@@ -244,7 +280,40 @@ int main()
         characterController.update(
             deltaTime
         );
-        
+        // -------------------------------------------------
+        // Report playback status
+        // -------------------------------------------------
+
+        if (replyActive)
+        {
+            if (replyReceived)
+            {
+                if (characterController.isSpeaking())
+                {
+                    conversationClient.notifyPlaybackStarted(
+                        currentReplyId
+                    );
+                }
+                else
+                {
+                    conversationClient.notifyPlaybackFailed(
+                        currentReplyId
+                    );
+
+                    replyActive = false;
+                    currentReplyId.clear();
+                }
+            }
+            else if (!characterController.isSpeaking())
+            {
+                conversationClient.notifyPlaybackFinished(
+                    currentReplyId
+                );
+
+                replyActive = false;
+                currentReplyId.clear();
+            }
+        }
         // ---------------------------------------------
         // Clear previous frame
         // ---------------------------------------------
@@ -431,6 +500,10 @@ int main()
     // 11. Clean up
     // -------------------------------------------------
     //consoleInput.stop();
+    
+
+    conversationClient.stop();
+
     glfwDestroyWindow(window);
 
     glfwTerminate();

@@ -1,6 +1,6 @@
 # Virtual Agent
 
-A C++ / OpenGL virtual character with skeletal animation, voice cloning, wake-word detection, speech recognition, and LLM-based voice conversation. Python runs Whisper, Qwen3-0.6B, and Qwen3-TTS locally.
+A C++ / OpenGL virtual character with skeletal animation, voice cloning and LLM-based voice conversation. Python captures microphone audio and runs Whisper, keyword matching, Qwen3-0.6B, and Qwen3-TTS locally. C++ fetches replies, plays audio, and synchronizes character animation.
 
 ## 1. Requirements and Setup
 
@@ -17,22 +17,13 @@ A C++ / OpenGL virtual character with skeletal animation, voice cloning, wake-wo
 | GPU | NVIDIA RTX 5060 Laptop GPU |
 | PyTorch / torchaudio | 2.11.0, CUDA 13.0 wheels (`cu130`) |
 | Dialogue LLM | `Qwen/Qwen3-0.6B`, BF16 on CUDA, thinking disabled |
-| LLM runtime | Hugging Face Transformers; retain the working environment version |
+| LLM runtime | Hugging Face Transformers 4.57.3 (qwen-tts 0.1.1 dependency) |
 | Qwen package | `qwen-tts==0.1.1` |
 | NumPy | 1.26.4 |
-| Wake-word runtime | sherpa-onnx 1.13.8, Windows x64 shared MT Release, no-TTS package  |
-| Wake-word model | `kws-zipformer-gigaspeech-3.3M-2024-01-01` |
-```
-curl.exe -fL -o sherpa-onnx.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts.tar.bz2"
+| Microphone input | Python `sounddevice`; 16000 Hz, mono, int16 PCM |
+| Activation | Match the word `Lily` in Whisper transcription, case-insensitively |
 
-tar -xf sherpa-onnx.tar.bz2
-
-curl.exe -fL -o kws-model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2"
-
-tar -xf kws-model.tar.bz2
-```
-
-These are the recorded project versions, rather than a latest-version list. Exact Visual Studio, Transformers, Whisper, and remaining library versions were not supplied; retain the working environment's versions.
+These are the recorded project versions, rather than a latest-version list. Exact Visual Studio, Whisper, and remaining library versions were not supplied; export the working environment for their exact pins.
 
 ### C++ Dependencies
 
@@ -43,65 +34,267 @@ These are the recorded project versions, rather than a latest-version list. Exac
 | GLM | Vectors, matrices, and quaternions |
 | Assimp | Load models, bones, and animations |
 | stb_image | Decode texture images |
-| miniaudio | Microphone recording and PCM playback |
+| miniaudio | PCM playback on the C++ side |
 | cpp-httplib | HTTP communication with Python |
-| sherpa-onnx | Local wake-word detection |
+| nlohmann/json | Parse server status and build playback notifications |
 
-From the directory containing `vcpkg.json`, install the manifest dependencies:
+### 1.1 Prerequisites and Directory Layout
+
+Install Visual Studio 2022 with **Desktop development with C++**, the MSVC x64/x86 toolset, and a Windows SDK. Also install Git for Windows and Miniconda or Anaconda. Open **Anaconda PowerShell Prompt** for the commands below; if ordinary PowerShell cannot find Conda, use that prompt first.
+
+The commands use these project locations:
+
+| Location | Path / purpose |
+| --- | --- |
+| Repository root | `D:\project\virtual_agent` |
+| Python server | `D:\project\virtual_agent\python\qwen_server` |
+| vcpkg tool | `D:\tools\vcpkg` in the fresh-install example below |
+| C++ dependencies | `D:\project\virtual_agent\vcpkg_installed\x64-windows-static` |
+| Python environment | Named Conda environment `virtual-agent`; actual directory is reported by `conda env list` |
+
+The vcpkg location is a setup choice, not a record of your existing installation. If vcpkg is already installed, run `Get-Command vcpkg` to find it and reuse that installation instead of cloning another copy. A named Conda environment is stored under Conda's configured environment directories, not automatically under the current project folder.
+
+```powershell
+Set-Location 'D:\project\virtual_agent'
+git --version
+conda --version
+conda env list
+```
+
+### 1.2 Install vcpkg Once
+
+For a fresh setup without an existing vcpkg installation:
+
+```powershell
+New-Item -ItemType Directory -Force 'D:\tools' | Out-Null
+git clone https://github.com/microsoft/vcpkg.git D:\tools\vcpkg
+Set-Location 'D:\tools\vcpkg'
+.\bootstrap-vcpkg.bat
+.\vcpkg.exe integrate install
+.\vcpkg.exe version
+```
+
+`bootstrap-vcpkg.bat` prepares the tool. `integrate install` enables user-wide MSBuild integration for that copy of vcpkg. The following commands use its full executable path, so adding vcpkg to PATH is optional. Restart Visual Studio after enabling integration.
+
+### 1.3 Configure Manifest Dependencies
+
+Return to the repository root:
+
+```powershell
+Set-Location 'D:\project\virtual_agent'
+notepad .\vcpkg.json
+```
+
+If `vcpkg.json` already exists, preserve its settings, dependencies, features, and baseline; add missing dependencies rather than overwriting it. For a new project, this is a minimal manifest for the vcpkg-managed libraries used here:
+
+```json
+{
+    "name": "virtual-agent",
+    "version-string": "0.1.0",
+    "dependencies": [
+        "glfw3",
+        "glm",
+        "assimp",
+        "nlohmann-json"
+    ]
+}
+```
+
+Install from the directory containing the manifest:
+
+```powershell
+& 'D:\tools\vcpkg\vcpkg.exe' install --triplet x64-windows-static
+```
+
+If reusing an existing vcpkg executable already on PATH, the equivalent command is:
 
 ```powershell
 vcpkg install --triplet x64-windows-static
 ```
 
-In Visual Studio:
+Run one of these alternatives. Manifest mode reads package names from `vcpkg.json`; do not run `vcpkg install nlohmann-json:x64-windows-static` here.
 
-1. Select **x64** and configure vcpkg to use `x64-windows-static`.
-2. Add the include directories for the header-only libraries. The existing HTTP layout uses `external/httplib/httplib.h`, with `$(ProjectDir)external\httplib` as an include directory.
-3. Add sherpa-onnx's `include` and `lib` directories, and link the import libraries required by its C API.
-4. Copy the runtime DLLs from the sherpa-onnx package beside the executable.
-5. Set the character GLB, shaders, and wake-word model paths to their actual locations.
+Verify the installed headers:
 
-Keep each header-only library's implementation macro in one translation unit only. Use a compatible MSVC runtime setting for the selected library builds.
+```powershell
+Test-Path .\vcpkg_installed\x64-windows-static\include\GLFW\glfw3.h
+Test-Path .\vcpkg_installed\x64-windows-static\include\glm\glm.hpp
+Test-Path .\vcpkg_installed\x64-windows-static\include\assimp\Importer.hpp
+Test-Path .\vcpkg_installed\x64-windows-static\include\nlohmann\json.hpp
+```
 
-### Python Environment
+All four checks should return `True`. Exact C++ library versions depend on the retained manifest baseline / vcpkg checkout; keep those files or the checkout commit to reproduce an existing build.
 
-Run in a Conda-enabled terminal:
+### 1.4 Header and Source Dependencies
 
-```bat
+Keep the project's existing GLAD, stb_image, miniaudio, and cpp-httplib files. The minimal manifest above does not install these separately maintained files.
+
+For a fresh checkout, verify that it includes the following assets; otherwise obtain the missing files from the corresponding official project:
+
+| Dependency | Required setup |
+| --- | --- |
+| GLAD | Existing code uses GLAD 1 API: `glad/glad.h` and `gladLoadGLLoader`. Generate OpenGL 3.3 Core C bindings with GLAD 1, add `glad.c` to the VS project, and add its `include` directory. GLAD 2 bindings are not a drop-in replacement. |
+| stb_image | Supply `stb_image.h`; define `STB_IMAGE_IMPLEMENTATION` in exactly one `.cpp` |
+| miniaudio | Supply `miniaudio.h`; define `MINIAUDIO_IMPLEMENTATION` in exactly one `.cpp` |
+| cpp-httplib | Supply `external/httplib/httplib.h`; add `external/httplib` to compiler include directories |
+
+Official sources: [GLAD 1 generator](https://glad.dav1d.de/), [stb](https://github.com/nothings/stb), [miniaudio](https://github.com/mackron/miniaudio), and [cpp-httplib](https://github.com/yhirose/cpp-httplib). Preserve the versions that already build in this repository; their exact revisions were not supplied.
+
+### 1.5 Configure Visual Studio / MSBuild
+
+Open the existing solution, then right-click the C++ project and open **Properties**. Apply shared settings to **All Configurations / x64**.
+
+| Property | Value |
+| --- | --- |
+| General → C++ Language Standard, or C/C++ → Language | ISO C++20 (`/std:c++20`) |
+| vcpkg → Use Vcpkg | Yes |
+| vcpkg → Use Vcpkg Manifest | Yes |
+| vcpkg → Vcpkg Triplet | `x64-windows-static` |
+| C/C++ → Code Generation → Runtime Library, Debug | Multi-threaded Debug (`/MTd`) |
+| C/C++ → Code Generation → Runtime Library, Release | Multi-threaded (`/MT`) |
+| Debugging → Working Directory | `D:\project\virtual_agent` |
+| Linker → Input → Additional Dependencies | Retain existing entries; include `opengl32.lib` |
+
+The working directory must contain `assets\Lu.glb` and `config\vertex.glsl` / `fragment.glsl`, matching the relative paths in `main.cpp`.
+
+If the vcpkg property UI does not expose the settings, unload the project and edit its `.vcxproj`. Add this property group before the `Microsoft.Cpp.props` import, without removing existing configuration groups:
+
+```xml
+<PropertyGroup Label="Vcpkg">
+  <VcpkgEnabled>true</VcpkgEnabled>
+  <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
+</PropertyGroup>
+```
+
+Reload the project. With integration enabled, manifest headers and libraries should be included automatically. If `<nlohmann/json.hpp>` remains unresolved after the file existence check succeeds, verify that VS uses the same vcpkg installation and triplet. As a fallback, add this actual path to **C/C++ → General → Additional Include Directories**, preserving inherited entries:
+
+```text
+D:\project\virtual_agent\vcpkg_installed\x64-windows-static\include
+```
+
+Also retain the existing GLAD, miniaudio, stb_image, and httplib include directories. Adding an include path alone does not configure library linking; use MSBuild integration for the vcpkg libraries.
+
+Add `ConversationClient.cpp` to the project through **Add → Existing Item** if it is not already compiled. C++ does not start microphone capture or load sherpa-onnx in the current flow.
+
+### 1.6 Create or Reuse the Conda Environment
+
+Use **Anaconda PowerShell Prompt**. If `virtual-agent` already exists, skip environment creation and activate it directly; do not recreate a working environment just to add sounddevice.
+
+Fresh environment only:
+
+```powershell
+Set-Location 'D:\project\virtual_agent\python\qwen_server'
 conda create -n virtual-agent python=3.10.22 pip ffmpeg -c conda-forge -y
 conda activate virtual-agent
+```
+
+Existing environment:
+
+```powershell
+Set-Location 'D:\project\virtual_agent\python\qwen_server'
+conda activate virtual-agent
+```
+
+Confirm which Python will receive the packages:
+
+```powershell
+conda env list
+(Get-Command python).Source
+python -c "import sys; print(sys.executable); print(sys.version)"
+```
+
+The active environment should be `virtual-agent`. Its physical path depends on your Conda installation; do not assume it is `D:\project\virtual_agent`. Use `python -m pip` to install into that active interpreter.
+
+Install the complete Python stack below after activating `virtual-agent`. Run these commands in order. Conda installs the interpreter, FFmpeg and microphone backend; pip installs the AI and HTTP packages into that same environment.
+
+```powershell
+Set-Location 'D:\project\virtual_agent\python\qwen_server'
+conda activate virtual-agent
+conda install -c conda-forge ffmpeg python-sounddevice -y
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu130
 python -m pip install numpy==1.26.4
-python -m pip install scipy pandas scikit-learn librosa soundfile soxr sentencepiece
-python -m pip install qwen-tts==0.1.1 flask openai-whisper
-python -m pip show transformers
+python -m pip install qwen-tts==0.1.1 transformers==4.57.3 accelerate==1.12.0
+python -m pip install flask openai-whisper scipy pandas scikit-learn librosa soundfile soxr sentencepiece
 python -m pip check
 ```
 
-The LLM worker imports `AutoTokenizer` and `AutoModelForCausalLM` from `transformers`. Reuse the version installed in the working Qwen-TTS environment; avoid blindly upgrading shared dependencies.
+The PyTorch/CUDA versions above retain this project's recorded configuration. This document has not re-tested a fresh Windows installation. If the index reports no matching wheel, check the available Python/platform wheels before changing the project's version pair.
 
-FFmpeg supports audio-file decoding. The C++ / Python runtime transfers raw PCM directly. `soxr` is a Python resampling library and is different from the SoX command-line program. This setup uses PyTorch SDPA attention without a separate FlashAttention installation.
+| Package / command | Purpose in this project |
+| --- | --- |
+| `python=3.10.22`, `pip` | Interpreter and package installer, created by the earlier Conda command |
+| Conda `ffmpeg` | Audio-file decoding for Whisper and reference-audio workflows |
+| Conda `python-sounddevice` | Provides the `sounddevice` import and microphone capture backend |
+| `torch`, `torchaudio` | GPU tensor inference and audio operations |
+| `numpy==1.26.4` | PCM arrays and numeric processing |
+| `qwen-tts==0.1.1` | Qwen3-TTS model and voice-clone prompt support |
+| `transformers==4.57.3` | Load the Qwen dialogue model; version required by qwen-tts 0.1.1 |
+| `accelerate==1.12.0` | Model loading/runtime dependency required by qwen-tts 0.1.1 |
+| `flask` | `/status`, `/reply/<reply_id>`, and `/playback` HTTP endpoints |
+| `openai-whisper` | Provides `import whisper` for speech transcription |
+| `soundfile`, `librosa`, `soxr`, `scipy` | Audio reading, preprocessing and resampling |
+| `sentencepiece` | Tokenizer support |
+| `pandas`, `scikit-learn` | Retained scientific-stack dependencies from the working setup |
 
-Check GPU access:
+Installing qwen-tts also resolves its dependencies, including `einops`, `onnxruntime`, `gradio`, and the Python `sox` wrapper. The wrapper and the separate SoX executable are different; the current PCM conversation path does not explicitly invoke the SoX command. Do not install FlashAttention for this setup; the workers use PyTorch SDPA.
 
-```bat
+If all previous AI packages already work and only today's microphone dependency is missing, run only:
+
+```powershell
+conda activate virtual-agent
+conda install -c conda-forge python-sounddevice -y
+```
+
+A pip alternative is `python -m pip install sounddevice`; choose one microphone installation method. `Lock`, `uuid4`, `queue`, `threading`, `logging`, `re`, and `pathlib` belong to Python's standard library and need no pip installation. Import names and distribution names can differ: install `openai-whisper` for `import whisper`, and `python-sounddevice` through Conda for `import sounddevice`.
+
+Do not install sherpa-onnx or its keyword model for the current Python microphone + Whisper keyword flow. The C++ nlohmann/json dependency is installed with vcpkg, independently of Conda.
+
+### 1.7 Verify Python, CUDA, and Microphone Input
+
+Run from the active environment:
+
+```powershell
 python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
+python -c "import whisper, sounddevice, flask, transformers, qwen_tts, torchaudio; print('Imports OK'); print(transformers.__version__)"
+python -m sounddevice
+ffmpeg -version
 ```
 
-After successfully running TTS, STT, and chat, record the complete package versions:
+Whisper currently requires CUDA, so `torch.cuda.is_available()` must print `True`. The PyTorch wheels provide their CUDA runtime; installing a separate CUDA toolkit is not normally required for these prebuilt wheels. A compatible NVIDIA driver is required.
 
-```bat
+If the wrong microphone is selected, use the input device index shown by `python -m sounddevice`:
+
+```python
+microphone_worker = MicrophoneWorker(
+    whisper_worker=whisper_worker,
+    on_text=handle_microphone_text,
+    device=1,
+    speech_threshold=0.015,
+)
+```
+
+`1` is an example; replace it with your input device index. Keep `device=None` to use the default. Enable Windows microphone access for desktop apps if recording is blocked.
+
+FFmpeg supports audio-file decoding. `soxr` is a resampling library and is different from the SoX executable. Current attention uses PyTorch SDPA without a separate FlashAttention installation.
+
+After successful testing, save the environment from the server directory:
+
+```powershell
+Set-Location 'D:\project\virtual_agent\python\qwen_server'
 python -m pip freeze > requirements-virtual-agent.txt
+conda env export > environment-virtual-agent.yml
 ```
 
-To restore that snapshot, install the matching PyTorch pair from the CUDA wheel index above first, then run:
+The Conda export records the environment location as well as packages; on another machine, review or remove a machine-specific `prefix:` line before recreating it. To restore a pip snapshot into an appropriately prepared environment, install the matching CUDA PyTorch pair first, then run:
 
-```bat
-python -m pip install -r requirements-virtual-agent.txt
+```powershell
+python -m pip install -r .\requirements-virtual-agent.txt
 ```
 
-### Models and Local Configuration
+
+### 1.8 Models and Local Configuration
 
 | Item | Configuration |
 | --- | --- |
@@ -110,8 +303,9 @@ python -m pip install -r requirements-virtual-agent.txt
 | Whisper | `base`, configured in `whisper_worker.py`, running on CUDA |
 | Dialogue model | `Qwen/Qwen3-0.6B`; downloaded on first load and cached locally |
 | Character instructions | Configure identity, language, and reply length through `system_prompt` in `llm_worker.py` |
-| Wake-word model | Extract the sherpa-onnx model and configure encoder, decoder, joiner, and token-file paths |
-| Wake words | Configure the keyword file using the model's token format; current example phrase: “hello, lily” |
+| Microphone | Default input on the Python server computer; configure `device` if needed |
+| Keyword | `WAKE_WORD_PATTERN` in `server.py`; current example: `Lily` |
+| Speech segmentation | RMS threshold `0.015`, 800 ms silence, 300 ms pre-roll, 200 ms minimum above-threshold audio, 15 s maximum recording |
 | HTTP service | Match the C++ clients and Flask server; existing service address: `127.0.0.1:5000` |
 
 Model downloads require network access initially. C++ communicates with the Python service locally.
@@ -163,98 +357,128 @@ Implemented features:
 
 ## 5. Audio and Speech Modules
 
-The file names below identify modules; keep their directory prefixes consistent with the actual project layout.
+**Flow:** server microphone → utterance segmentation → Whisper → keyword check → LLM → TTS → HTTP reply → C++ playback → Talk / Idle.
 
 | Module / file | What it does |
 | --- | --- |
-| `AudioBuffer.h` | Store `int16_t` PCM samples, sample rate, and channel count |
-| `AudioRecorder.cpp` | Capture microphone audio with miniaudio and deliver chunks through a callback |
-| `WakeWordDetector.cpp` | Feed audio to sherpa-onnx and report a detected wake word |
-| `SpeechRecognizer.cpp` | Maintain recent audio, collect a triggered recording, request a reply through ChatEngine on a background thread, and queue returned audio |
-| `STTEngine.cpp` | Send PCM to Python's `/stt` endpoint and return recognized text |
-| `TTSEngine.cpp` | Send text to `/tts` and build an `AudioBuffer` from the PCM response |
-| `ChatEngine.cpp` | Send recorded PCM to `/chat` and reconstruct the returned reply AudioBuffer |
-| `CharacterController.cpp` | Accept reply audio through `speakAudio()`; play pending audio in `update()` and control Talk / Idle |
-| `AudioPlayer.cpp` | Play PCM with miniaudio and retain sample memory during playback |
-| `server.py` | Start the workers and coordinate `/chat`: Whisper → LLM → TTS; retain `/stt` and `/tts` |
-| `whisper_worker.py` | Process queued recordings with Whisper |
+| `microphone_worker.py` | Capture microphone audio using sounddevice; collect utterances and submit them to Whisper |
+| `whisper_worker.py` | Load Whisper once and transcribe queued int16 recordings on CUDA |
+| `server.py` | Match the activation keyword, coordinate LLM / TTS, retain reply audio, and expose status and playback endpoints |
 | `llm_worker.py` | Process queued text with Qwen3-0.6B and return a short answer |
-| `tts_worker.py` / `qwen_tts_worker.py` | Process queued text with Qwen3-TTS; use the filename imported by server.py |
-| `test_qwen.py` | Create the reusable voice prompt and a preview WAV |
+| `tts_worker.py` / `qwen_tts_worker.py` | Generate reply audio with Qwen3-TTS; use the filename imported by server.py |
+| `test_qwen.py` | Create `character_voice.pt` and a preview WAV |
+| `ConversationClient.h/.cpp` | Poll the server on a background thread, download replies, and queue playback notifications |
+| `AudioBuffer.h` | Store int16 PCM samples, sample rate, and channel count |
+| `CharacterController.cpp` | Store received audio, start playback in `update()`, and synchronize Talk / Idle |
+| `AudioPlayer.cpp` | Play PCM with miniaudio and retain sample memory during playback |
+| `main.cpp` | Start the network client, retrieve replies, update the character, and report playback state |
 
-### Microphone and Wake-Word Detection
+### Server Microphone and Speech Recognition
 
-**Flow:** microphone → AudioRecorder callback → SpeechRecognizer → WakeWordDetector → start recording.
+`MicrophoneWorker` owns the input stream, bounded audio queue, and processing thread. The sounddevice callback copies 20 ms blocks of 16000 Hz mono int16 PCM into the queue; it does not run inference.
 
-`AudioRecorder::start()` stores a callback. Whenever a new audio chunk arrives, the callback calls `speechRecognizer.processAudioChunk(chunk)`.
+The processing thread uses an RMS threshold to detect sound, retains pre-roll audio, and ends a recording after sustained silence or the maximum duration. This is basic energy-based segmentation, not a dedicated neural VAD. Adjust `speech_threshold` for the microphone and room; a lower value also admits more background noise.
 
-While waiting, `SpeechRecognizer` keeps recent audio in `rollingBuffer`. When `notifyWakeWordDetected()` runs, it copies that history into `recordedSamples`. Subsequent chunks are appended until the configured recording-end condition is met. The completed audio is queued for the background chat request.
+A complete recording is submitted through `whisper_worker.submit(pcm, sample_rate, channels)`. Whisper converts int16 PCM to normalized float32 audio; stereo inputs are mixed to mono. The existing worker requires 16000 Hz audio. The model stays loaded between requests.
 
-The rolling buffer preserves audio around the trigger; subsequent chunks capture the rest of the spoken command. The trigger chunk should be included only once.
+`MicrophoneWorker` uses `running` and a queue sentinel (`None`) to stop its thread. Each Whisper request has a separate `finished` Event indicating recognition completion. Stop the microphone worker before stopping Whisper.
 
-### Speech to Text — Whisper
+### Keyword Activation and Reply Generation
 
-**Flow:** recorded PCM → STTEngine → `POST /stt` → Whisper → recognized text.
+`handle_microphone_text()` checks the transcription using `r"\blily\b"` with `re.IGNORECASE`. Text after the keyword is passed to the LLM. For example, “Hello Lily, tell me a joke” submits “tell me a joke”. A keyword without a following question does not submit a conversation; waiting for the next utterance is not implemented.
 
-The Python endpoint interprets signed 16-bit PCM and converts it into normalized floating-point samples. Whisper's input must be mono at 16 kHz; configure recording accordingly or resample before transcription. Keep the client and server consistent on sample rate, channels, and the response format.
-
-Transcription runs through a worker so that waiting for the server does not block rendering.
+The microphone callback handler runs on the microphone processing thread and waits for the existing LLM and TTS workers in order. No new thread is created per keyword. The LLM uses `Qwen/Qwen3-0.6B`, BF16 on CUDA, SDPA attention, and `enable_thinking=False`. The current request contains system instructions and one user message, without conversation history.
 
 ### Text to Speech — Qwen3-TTS
 
 **Voice preparation:** `reference.wav` + matching transcript → `test_qwen.py` → `character_voice.pt` + preview WAV.
 
-Use a clean reference recording of roughly 5–10 seconds. Run `test_qwen.py` once for the chosen voice, listen to the preview, and keep the generated `.pt` file accessible to `server.py`. This file stores voice-conditioning data, not the complete model.
+Use a clean reference recording of roughly 5–10 seconds. Generate the prompt once for the selected voice and keep it accessible to `server.py`. The `.pt` file stores voice-conditioning data, not the full model.
 
-**Runtime flow:** text → TTSEngine → `POST /tts` → Qwen3-TTS → PCM → AudioPlayer.
+At runtime, Python submits the LLM reply directly to the TTS worker. The generated reply is retained as raw signed 16-bit little-endian PCM with its sample rate and channel count. C++ no longer requests synthesis through `TTSEngine` or `CharacterController::speak(text)` in this flow.
 
-The server loads the model and voice prompt once, then reuses them. The TTS response contains raw signed 16-bit little-endian PCM, with `X-Sample-Rate` and `X-Channels` headers. `TTSEngine` reads that metadata; `AudioPlayer` uses it for playback.
+### Server State and HTTP Endpoints
 
-Speech synthesis is requested asynchronously. During playback, the character uses Talk; after playback ends, it returns to Idle.
+| State | Meaning |
+| --- | --- |
+| `idle` | Accept a new keyword-triggered question |
+| `processing` | Generate the LLM reply and TTS audio |
+| `ready` | Reply is available for C++ to download |
+| `playing` | C++ has reported playback started |
 
-### Voice Conversation — Whisper + LLM + TTS
+`conversation_state` stores the status, pending reply, and latest error. A `threading.Lock` protects related state reads and writes across microphone processing and Flask request threads. Inference runs outside the lock. `uuid4().hex` provides an ID for each reply.
 
-**Flow:** microphone → SpeechRecognizer → ChatEngine → `POST /chat` → Whisper → LLM → Qwen3-TTS → reply audio → CharacterController → AudioPlayer.
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /status` | Return state, reply ID, user text, reply text, and error |
+| `GET /reply/<reply_id>` | Return raw PCM with `X-Reply-Id`, `X-Sample-Rate`, `X-Channels`, and `X-Audio-Format: pcm_s16le` |
+| `POST /playback` | Accept `reply_id` and `state`: `started`, `finished`, or `failed` |
 
-The client sends raw signed 16-bit little-endian PCM with `X-Sample-Rate` and `X-Channels`. The current server expects 16000 Hz recording and supports mono or stereo; the Whisper worker mixes stereo to mono. Changing the metadata alone does not resample audio.
+Playback completion or failure clears the pending reply and restores `idle`. Downloading audio alone does not complete a conversation. The current flow replaces the earlier audio-upload `/chat` pipeline; `/stt` and `/tts` are not required by this client.
 
-The Flask request waits for each worker in order: recognized text from Whisper, reply text from the LLM, then audio from TTS. Intermediate text stays on the server. Each Python worker uses a request object, Queue, Thread, and completion Event; models load once at startup.
+Required server imports include `from threading import Lock` and `from uuid import uuid4`; both are standard-library imports. Normal HTTP access logs can be hidden with `logging.getLogger("werkzeug").setLevel(logging.WARNING)`, while warnings, errors, and explicit prints remain visible.
 
-The LLM uses `Qwen/Qwen3-0.6B`, BF16 on CUDA, and SDPA attention. Its chat template includes system instructions and the current user message with `enable_thinking=False`. The initial version answers each request independently without conversation history. Prefer short spoken replies to reduce TTS waiting time.
+### C++ Reply Playback
 
-The `/chat` response contains raw int16 PCM and audio-format headers. ChatEngine reads the returned sample rate and channel count and uses a longer HTTP read timeout for the complete pipeline.
+`ConversationClient` uses cpp-httplib for HTTP and nlohmann/json for status and playback messages. Binary PCM does not pass through JSON. Its network thread polls about every 200 ms, decodes little-endian int16 audio into `ConversationReply::audio`, and delivers each reply ID once. Playback notifications are queued for background delivery and retried on transient failures.
 
 | C++ step | Work completed |
 | --- | --- |
-| `SpeechRecognizer::workerLoop()` | Call `chatEngine.chat(audio)` and put the reply in a mutex-protected `replyQueue` |
-| `tryGetReply(AudioBuffer& audio)` | Move a queued reply into the caller's buffer; return whether one was available |
-| Main loop | Pass the reply to `CharacterController::speakAudio()` |
-| `CharacterController::speakAudio()` | Store the reply in `pendingAudio` |
-| `CharacterController::update()` | Play pending audio, enter Talk, then return to Idle after playback |
+| Startup | Create one `ConversationClient` in `main()` and call `start()` |
+| `tryGetReply(ConversationReply&)` | Move a downloaded reply into the main thread without blocking rendering |
+| `CharacterController::speakAudio()` | Move `reply.audio` into `pendingAudio` |
+| `CharacterController::update()` | Start pending playback, enter Talk, and return to Idle when playback stops |
+| `CharacterController::isSpeaking()` | Return `speechActive` |
+| Main loop | Check playback after `update()`; send `started`, `finished`, or `failed` with the matching reply ID |
+| Shutdown | Stop the network client before destroying the window |
 
-Keep HTTP calls off the rendering thread and microphone callback. Update the rolling buffer once per microphone chunk. Standalone STTEngine, TTSEngine, and `speak(text)` remain available.
+Call character `update()` once per frame. `speakAudio()` queues audio rather than immediately playing it, so checking `isSpeaking()` before `update()` is too early. Keep HTTP requests off the rendering thread.
+
+Remove the local TTS path from CharacterController: `speak(text)`, the `TTSEngine` member, TTS thread, `ttsRunning`, and the thread-joining destructor logic. Keep `speakAudio()`, `pendingAudio`, and playback / animation updates. C++ `AudioRecorder`, `WakeWordDetector`, `SpeechRecognizer`, `STTEngine`, `TTSEngine`, and `ChatEngine` are no longer started or used in the current conversation path; their source files may remain as earlier implementations.
+
+### Current Limitations
+
+- Whisper keyword matching can still miss or mis-transcribe a name. It is checked after utterance transcription, not immediately when the keyword is spoken.
+- The microphone processing thread waits during recognition and reply generation; queued audio from that period is discarded afterward.
+- During reply availability and playback, the current microphone worker can still capture and transcribe audio; the server ignores recognized text while busy. Actual input suspension and echo cancellation are not implemented. Headphones help during testing.
+- A server-side microphone captures the server computer's input. A remote deployment would require client-side audio capture and transport.
+- Playback feedback assumes `AudioPlayer::isPlaying()` reflects playback promptly. The current client stop routine does not guarantee queued notifications are delivered; a disconnected client can leave the server waiting in `ready` or `playing` until reset or restart.
 
 ### Current Latency
 
-The full reply is synthesized before it is returned; streaming playback is not implemented. One measured TTS run took 11.55 seconds for 5.36 seconds of audio (RTF 2.15), excluding STT and LLM time. Shorter replies reduce the amount of audio to generate. Worker threads keep the application responsive but do not automatically accelerate model inference; the models and renderer share GPU resources.
+The full reply is synthesized before it becomes available for download; streaming playback is not implemented. One measured TTS run took 11.55 seconds for 5.36 seconds of audio (RTF 2.15), excluding STT and LLM time. Shorter replies reduce the amount of audio to generate. Worker threads keep the application responsive but do not automatically accelerate model inference; the models and renderer share GPU resources.
 
 ## 6. Run the Project
 
-1. Finish the C++ dependency setup and configure asset/model paths.
-2. Generate `character_voice.pt` if it does not exist.
-3. Activate the Python environment and start the server from its directory:
+1. Install manifest dependencies, including `nlohmann-json`, and configure asset paths.
+2. Install sounddevice in the `virtual-agent` environment and verify the selected input with `python -m sounddevice`.
+3. Generate `character_voice.pt` if it does not exist.
+4. Start Python from the server directory:
 
-   ```bat
+   ```powershell
+   Set-Location 'D:\project\virtual_agent\python\qwen_server'
    conda activate virtual-agent
    python server.py
    ```
 
-4. Keep the server running and launch the C++ application from Visual Studio.
-5. Say the configured wake phrase followed by a question. Check the recognized text and LLM reply on the server, then verify speech playback and Talk / Idle transitions.
-6. Test `/stt` and `/tts` separately when checking individual stages.
+5. Wait for the models and microphone to start, then launch the C++ application.
+6. Say the keyword and question in one utterance, for example: “Lily, tell me a short joke.” Pause for about 0.8 seconds to finish the recording.
+7. Check the server transcription and reply. Confirm C++ downloads the audio, plays it with Talk animation, returns to Idle, and reports playback finished.
+
+If normal speech does not trigger recording, lower `speech_threshold`, for example from `0.015` to `0.008`. If JSON headers are not found, verify the manifest installation directory and Visual Studio include configuration.
 
 ## 7. Current Status
 
-Implemented: custom GLB character, rendering, skeletal animation, animation sequences and blending, Qwen3-TTS voice cloning, PCM playback, microphone recording, wake-word detection, Whisper STT, a dedicated LLM worker, server-side Whisper → LLM → TTS conversation, and C++ ChatEngine reply playback.
+Implemented: custom GLB character, rendering, skeletal animation, animation sequences and blending, Qwen3-TTS voice cloning, PCM playback, Python microphone capture and basic utterance segmentation, Whisper transcription with keyword activation, server-side LLM / TTS processing, and C++ reply retrieval with playback feedback and Talk / Idle synchronization.
 
-Next: reduce speech latency, add conversation history, then add facial animation and lip synchronization.
+The conversation path now keeps audio input and AI processing in Python, with character rendering, playback, and animation in C++.
+
+Next: suspend microphone processing during character playback, improve utterance detection and activation reliability, handle disconnected clients, reduce speech latency, add conversation history, and add facial animation / lip synchronization.
+
+## 8. Setup References
+
+- [Microsoft: vcpkg with Visual Studio / MSBuild](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started-msbuild)
+- [Microsoft: manifest mode](https://learn.microsoft.com/en-us/vcpkg/consume/manifest-mode)
+- [Microsoft: MSBuild integration settings](https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/msbuild-integration)
+
+- [Qwen3-TTS package dependencies](https://github.com/QwenLM/Qwen3-TTS/blob/main/pyproject.toml)

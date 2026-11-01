@@ -161,25 +161,21 @@
     <ClCompile Include="animation\animationController.cpp" />
     <ClCompile Include="animation\Animator.cpp" />
     <ClCompile Include="audio\AudioPlayer.cpp" />
-    <ClCompile Include="audio\STTEngine.cpp" />
-    <ClCompile Include="audio\TTSEngine.cpp" />
     <ClCompile Include="character\Camera.cpp" />
     <ClCompile Include="character\CharacterController.cpp" />
     <ClCompile Include="character\Mesh.cpp" />
     <ClCompile Include="character\Model.cpp" />
     <ClCompile Include="character\Shader.cpp" />
-    <ClCompile Include="chat\chatEngine.cpp" />
+    <ClCompile Include="chat\ConversationClient.cpp" />
     <ClCompile Include="external\miniaudio\miniaudio.c" />
-    <ClCompile Include="input\AudioRecorder.cpp" />
     <ClCompile Include="input\ConsoleInput.cpp" />
-    <ClCompile Include="input\SpeechRecognizer.cpp" />
-    <ClCompile Include="input\WakeWordDetector.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config\fragment.glsl" />
     <None Include="config\vertex.glsl" />
     <None Include="python\qwen_server\llm_worker.py" />
+    <None Include="python\qwen_server\microphone_worker.py" />
     <None Include="python\qwen_server\tts_worker.py" />
     <None Include="python\qwen_server\server.py" />
     <None Include="python\qwen_server\whisper_worker.py" />
@@ -194,19 +190,14 @@
     <ClInclude Include="animation\Animator.h" />
     <ClInclude Include="audio\AudioBuffer.h" />
     <ClInclude Include="audio\AudioPlayer.h" />
-    <ClInclude Include="audio\STTEngine.h" />
-    <ClInclude Include="audio\TTSEngine.h" />
     <ClInclude Include="character\Camera.h" />
     <ClInclude Include="character\CharacterController.h" />
     <ClInclude Include="character\Mesh.h" />
     <ClInclude Include="character\Model.h" />
     <ClInclude Include="character\Shader.h" />
-    <ClInclude Include="chat\chatEngine.h" />
+    <ClInclude Include="chat\ConversationClient.h" />
     <ClInclude Include="external\miniaudio\miniaudio.h" />
-    <ClInclude Include="input\AudioRecorder.h" />
     <ClInclude Include="input\ConsoleInput.h" />
-    <ClInclude Include="input\SpeechRecognizer.h" />
-    <ClInclude Include="input\WakeWordDetector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

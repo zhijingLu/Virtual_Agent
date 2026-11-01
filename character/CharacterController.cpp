@@ -60,38 +60,38 @@ void CharacterController::setState(
     }
 }
 
-void CharacterController::speak(
-    const std::string& text
-)
-{
-    if (ttsRunning)
-        return;
-    // Previous TTS thread may have finished,
-   // but it still needs to be joined.
-    if (ttsThread.joinable())
-    {
-		// Wait for the previous TTS thread to finish before starting a new one.
-        ttsThread.join();
-    }
-
-
-    ttsRunning = true;
-    ttsThread = std::thread(
-        [this, text]()
-        {
-            AudioBuffer audio =
-                tts.synthesize(text);
-
-            if (!audio.samples.empty())
-            {
-                std::lock_guard<std::mutex> lock(audioMutex);
-
-                pendingAudio = std::move(audio);
-            }
-
-            ttsRunning = false;
-        });
-}
+//void CharacterController::speak(
+//    const std::string& text
+//)
+//{
+//    if (ttsRunning)
+//        return;
+//    // Previous TTS thread may have finished,
+//   // but it still needs to be joined.
+//    if (ttsThread.joinable())
+//    {
+//		// Wait for the previous TTS thread to finish before starting a new one.
+//        ttsThread.join();
+//    }
+//
+//
+//    ttsRunning = true;
+//    ttsThread = std::thread(
+//        [this, text]()
+//        {
+//            AudioBuffer audio =
+//                tts.synthesize(text);
+//
+//            if (!audio.samples.empty())
+//            {
+//                std::lock_guard<std::mutex> lock(audioMutex);
+//
+//                pendingAudio = std::move(audio);
+//            }
+//
+//            ttsRunning = false;
+//        });
+//}
 
 
 void CharacterController::speakAudio(AudioBuffer audio)
@@ -147,4 +147,9 @@ CharacterController::~CharacterController()
     {
         ttsThread.join();
     }
+}
+
+bool CharacterController::isSpeaking() const
+{
+    return speechActive;
 }

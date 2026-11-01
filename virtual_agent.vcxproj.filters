@@ -42,22 +42,7 @@
     <ClCompile Include="audio\AudioPlayer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="audio\TTSEngine.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="character\CharacterController.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="input\SpeechRecognizer.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="audio\STTEngine.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="input\AudioRecorder.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="input\WakeWordDetector.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="input\ConsoleInput.cpp">
@@ -66,7 +51,7 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="chat\chatEngine.cpp">
+    <ClCompile Include="chat\ConversationClient.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -101,28 +86,13 @@
     <ClInclude Include="audio\AudioBuffer.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="audio\TTSEngine.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="character\CharacterController.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="input\SpeechRecognizer.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="audio\STTEngine.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="input\AudioRecorder.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="input\WakeWordDetector.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="input\ConsoleInput.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="chat\chatEngine.h">
+    <ClInclude Include="chat\ConversationClient.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -137,5 +107,6 @@
     <None Include="python\qwen_server\tts_worker.py" />
     <None Include="python\qwen_server\whisper_worker.py" />
     <None Include="python\qwen_server\llm_worker.py" />
+    <None Include="python\qwen_server\microphone_worker.py" />
   </ItemGroup>
 </Project>
